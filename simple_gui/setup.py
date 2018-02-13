@@ -58,6 +58,7 @@ setup(
 
     install_requires=[
         'apluslms-roman >= 0.1.0',
+        'appdirs >= 1.4.0',
     ],
 
     entry_points={
