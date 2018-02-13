@@ -7,6 +7,7 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
+import re
 from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
@@ -23,9 +24,16 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     requirements = [l.split('#', 1)[0].strip() for l in requirements]
     requirements = [l for l in requirements if l]
 
+def find_version(*file_paths):
+    with open(path.join(here, *parts), 'r') as fp:
+        match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", fp.read(), re.M)
+        if match:
+            return match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
 setup(
     name='apluslms-roman',
-    version='0.1.5-rc.2',
+    version=find_version('apluslms_roman', '__init__.py'),
     description='Course material builder for online learning systems',
     long_description=long_description,
     keywords='apluslms material',

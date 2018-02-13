@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version=$(grep version setup.py|cut -d"'" -f 2)
+version=$(grep __version__ apluslms_roman/__init__.py|cut -d"'" -f 2)
 if [ "x${version#*-}" = "x$version" ]; then
     git tag -a v$version -m "Release $version"
 else

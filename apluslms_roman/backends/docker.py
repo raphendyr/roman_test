@@ -16,7 +16,7 @@ class DockerBackend(Backend):
     def _client(self):
         return docker.from_env()
 
-    def _run_opts(self, step):
+    def _run_opts(self, task, step):
         env = self.environment
 
         opts = dict(
@@ -28,22 +28,22 @@ class DockerBackend(Backend):
 
         # mounts and workdir
         if step.mnt:
-            opts['mounts'] = [Mount(step.mnt, env.course_path, type='bind', read_only=False)]
+            opts['mounts'] = [Mount(step.mnt, task.path, type='bind', read_only=False)]
             opts['working_dir'] = step.mnt
         else:
             wpath = self.WORK_PATH
             opts['mounts'] = [
                 Mount(wpath, None, type='tmpfs', read_only=False, tmpfs_size=self.WORK_SIZE),
-                Mount(join(wpath, 'src'), env.course_path, type='bind', read_only=True),
-                Mount(join(wpath, 'build'), join(env.course_path, '_build'), type='bind', read_only=False),
+                Mount(join(wpath, 'src'), task.path, type='bind', read_only=True),
+                Mount(join(wpath, 'build'), join(task.path, '_build'), type='bind', read_only=False),
             ]
             opts['working_dir'] = wpath
 
         return opts
 
-    def prepare(self, steps, observer):
+    def prepare(self, task, observer):
         client = self._client
-        for i, step in enumerate(steps):
+        for i, step in enumerate(task.steps):
             observer.start_step(i)
             image, tag = step.img.split(':', 1)
             try:
@@ -54,11 +54,11 @@ class DockerBackend(Backend):
             finally:
                 observer.end_step(i)
 
-    def build(self, steps, observer):
+    def build(self, task, observer):
         client = self._client
-        for i, step in enumerate(steps):
+        for i, step in enumerate(task.steps):
             observer.start_step(i)
-            opts = self._run_opts(step)
+            opts = self._run_opts(task, step)
             observer.manager_msg(i, "Running container {}:".format(opts['image']))
             container = client.containers.create(**opts)
 
@@ -78,3 +78,41 @@ class DockerBackend(Backend):
                 container.remove()
                 observer.end_step(i)
         return BuildResult()
+
+    def verify(self):
+        try:
+            client = self._client
+            client.ping()
+        except Exception as e:
+            return "{}: {}".format(e.__class__.__name__, e)
+
+    def version_info(self):
+        version = self._client.version()
+        if not version:
+            return
+
+        out = []
+        okeys = ['Version', 'ApiVersion', 'MinAPIVersion', 'GoVersion', 'BuildTime', 'GitCommit', 'Experimental', 'Os', 'Arch', 'KernelVersion']
+        version['Name'] = 'Client'
+        components = version.pop('Components')
+        components.insert(0, version)
+
+        for component in components:
+            name = component.pop('Name', '-')
+            if 'Details' in component:
+                component.update(component.pop('Details'))
+            out.append("Docker {}:".format(name))
+            keys = okeys + [k for k in component.keys() if k not in okeys]
+            for key in keys:
+                if key in component:
+                    val = component[key]
+                    if isinstance(val, dict):
+                        out.append("  {}:".format(key))
+                        for k, v in val.items(): out.append("    {}: {}".format(k, v))
+                    elif isinstance(val, list):
+                        out.append("  {}:".format(key))
+                        for v in val: out.append("   - {}".format(v))
+                    else:
+                        out.append("  {}: {}".format(key, val))
+
+        return '\n'.join(out)

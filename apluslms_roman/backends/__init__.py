@@ -1,12 +1,41 @@
 from collections import namedtuple
 
+from ..observer import BuildObserver
 
-BuildStep = namedtuple('BuildStep', [
-    'img', # docker image
-    'cmd', # If not None, docker command
-    'mnt', # If not None, course data is mounted to this path in RW mode
-    'env', # If not None, dict that is given as environment for the image
+
+BuildTask = namedtuple('BuildTask', [
+    'path',
+    'steps',
 ])
+
+
+def clean_image_name(image):
+    if ':' not in image:
+        image += ':latest'
+    return image
+
+
+class BuildStep:
+    """
+    img: docker image
+    cmd: If not None, docker command
+    mnt: If not None, course data is mounted to this path in RW mode
+    env: If not None, dict that is given as environment for the image
+    """
+    __slots__ = ('img', 'cmd', 'mnt', 'env')
+
+    @classmethod
+    def from_config(cls, data):
+        if isinstance(data, dict):
+            if 'img' not in data:
+                raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
+            img = clean_image_name(data['img'])
+            return cls(img, data.get('cmd'), data.get('mnt'), data.get('env'))
+        else:
+            return cls(clean_image_name(data), None, None, None)
+
+    def __init__(self, img, cmd, mnt, env):
+        self.img, self.cmd, self.mnt, self.env = img, cmd, mnt, env
 
 
 class BuildResult:
@@ -30,7 +59,6 @@ class BuildResult:
 
 
 Environment = namedtuple('Environment', [
-    'course_path',
     'uid',
     'gid',
 ])
@@ -40,14 +68,25 @@ class Backend:
     WORK_SIZE = '100M'
     WORK_PATH = '/work'
 
-    def __init__(self, environment):
+    def __init__(self, environment: Environment):
         self.environment = environment
 
-    def prepare(self, steps, observer):
+    def prepare(self, task: BuildTask, observer: BuildObserver):
         raise NotImplementedError
 
-    def build(self, steps, observer):
+    def build(self, task: BuildTask, observer: BuildObserver):
         """
             Returns BuildResult
         """
         raise NotImplementedError
+
+    def verify(self):
+        """Verify that connections to backend is working
+        Returns:
+          On success: None
+          On failure: exception or error string
+        """
+        raise NotImplementedError
+
+    def version_info(self):
+        pass

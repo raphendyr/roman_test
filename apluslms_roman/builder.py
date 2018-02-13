@@ -1,7 +1,7 @@
 from os import getuid, getegid
 from os.path import isdir, join
 
-from .backends import BuildStep, Environment
+from .backends import BuildTask, BuildStep, Environment
 from .helpers import import_string, cached_property
 from .observer import StreamObserver
 
@@ -13,52 +13,41 @@ def clean_image_name(image):
 
 
 class Builder:
-    def __init__(self, config, backend=None, observer=None):
+    def __init__(self, engine, config, observer=None):
         assert isdir(config.__path__), "Course configuration path doesn't exists"
         self.config = config
         self.path = config.__path__
+        self._engine = engine
         self._observer = observer or StreamObserver()
 
-        if not backend:
-            from .backends.docker import DockerBackend
-            backend = DockerBackend
-        if isinstance(backend, str):
-            backend = import_string(backend)
-        self._backend_class = backend
-
-    @cached_property
-    def _backend(self):
-        environment = Environment(self.path, getuid(), getegid())
-        return self._backend_class(environment)
-
-    @cached_property
-    def _steps(self):
-        steps = self.config.steps
-        build_steps = []
-        for step in steps:
-            if isinstance(step, dict):
-                if 'img' not in step:
-                    raise RuntimeError("Missing image name (img) in step configuration: {}".format(step))
-                bstep = BuildStep(
-                    clean_image_name(step['img']),
-                    step.get('cmd'),
-                    step.get('mnt'),
-                    step.get('env'),
-                )
-            else:
-                bstep = BuildStep(clean_image_name(step), None, None, None)
-            build_steps.append(bstep)
-
-        return build_steps
-
     def build(self):
-        steps = self._steps
+        backend = self._engine.backend
         observer = self._observer
-        backend = self._backend
+        steps = [BuildStep.from_config(step) for step in self.config.steps]
+        task = BuildTask(self.path, steps)
 
         observer.enter_prepare()
-        backend.prepare(self._steps, observer)
+        backend.prepare(task, observer)
         observer.enter_build()
-        result = backend.build(self._steps, observer)
+        result = backend.build(task, observer)
         observer.done(data=result)
         return result
+
+
+class Engine:
+    def __init__(self, backend_class=None):
+        if not backend_class:
+            from .backends.docker import DockerBackend as backend_class
+        if isinstance(backend_class, str):
+            backend_class = import_string(backend_class)
+        environment = Environment(getuid(), getegid())
+        self.backend = backend_class(environment)
+
+    def verify(self):
+        return self.backend.verify()
+
+    def version_info(self):
+        return self.backend.version_info()
+
+    def create_builder(self, *args, **kwargs):
+        return Builder(self, *args, **kwargs)

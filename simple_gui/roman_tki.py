@@ -12,7 +12,8 @@ from threading import Thread
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 
-from apluslms_roman import CourseConfig, Builder
+from apluslms_roman import CourseConfig, Engine
+from apluslms_roman.backends.docker import DockerBackend
 from apluslms_roman.observer import (
     Phase,
     Message,
@@ -135,10 +136,10 @@ class QueueObserver(BuildObserver):
 
 
 class BuildTask(Thread):
-    def __init__(self, config):
+    def __init__(self, engine, config):
         super().__init__()
         self._observer = obs = QueueObserver()
-        self._builder = Builder(config, observer=obs)
+        self._builder = engine.create_builder(config, observer=obs)
         self.daemon = True
 
     def run(self):
@@ -202,6 +203,11 @@ class Console(tk.Frame):
         self.text.delete(1.0, tk.END)
         self.text.config(state=tk.DISABLED)
 
+    def scroll_top(self):
+        self.text.config(state=tk.NORMAL)
+        self.text.see(1.0)
+        self.text.config(state=tk.DISABLED)
+
 
 class Progress(ttk.Progressbar):
     def __init__(self, parent):
@@ -239,6 +245,7 @@ class Roman:
         self.initial_dir = None
         self.config_dir = None
         self.config = None
+        self.engine = None
         self.build_task = None
 
         self.label = tk.Label(master, text="No course selected!")
@@ -269,6 +276,8 @@ class Roman:
         self.status.grid(columnspan=cols, row=4, sticky=tk.W+tk.E+tk.S)
 
         self.set_status("No course selected")
+        self.restore()
+        self.load_engine()
 
     def restore(self):
         st = self.settings
@@ -330,6 +339,34 @@ class Roman:
         #self.validate_btn.config(state=tk.NORMAL)
         self.close_btn.config(state=tk.NORMAL)
 
+    def load_engine(self):
+        self.engine = engine = Engine()
+        error = engine.verify()
+        if error:
+            messagebox.showerror(
+                "Backend failed",
+                "{} failed: {}".format(engine.backend.__class__.__name__, error),
+                parent=self.master
+            )
+
+            self.console.write(
+                "---\n{} failed to connect. Make sure that you have correct settings.\n  >> {}"
+                    .format(engine.backend.__class__.__name__, error),
+                'error',
+            )
+            if isinstance(engine.backend, DockerBackend):
+                self.console.write("""
+Do you have docker-ce installed and running?
+Are you in local 'docker' group? Have you logged out and back in after joining?
+You might be able to add yourself to that group with 'sudo adduser docker'.
+""", 'error')
+
+            self.engine = None
+        else:
+            self.console.write('---')
+            self.console.write(engine.version_info(), 'manager')
+            self.console.scroll_top()
+
     def open(self):
         self.set_status('')
         dir_ = filedialog.askdirectory(
@@ -352,6 +389,7 @@ class Roman:
     def load(self):
         if not self.config_dir:
             self.set_status("Error: no course dir selected")
+
 
         self.build_btn.config(state=tk.DISABLED)
         self.console.clear()
@@ -387,11 +425,15 @@ Used configuration:""", 'step')
             self.set_status("Error: build initiated without config")
             return
 
+        if not self.engine:
+            self.load_engine()
+            return
+
         steps = len(self.config.steps)
         self.progress.set_steps(steps * 2)
 
         self.lock()
-        self.build_task = build_task = BuildTask(self.config)
+        self.build_task = build_task = BuildTask(self.engine, self.config)
         build_task.start()
         self.set_status("building...")
         self.console.clear()
@@ -442,7 +484,6 @@ Used configuration:""", 'step')
 def main():
     root = tk.Tk()
     gui = Roman(root)
-    gui.restore()
     root.mainloop()
 
 
