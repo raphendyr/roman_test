@@ -25,7 +25,7 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
     requirements = [l for l in requirements if l]
 
 def find_version(*file_paths):
-    with open(path.join(here, *parts), 'r') as fp:
+    with open(path.join(here, *file_paths), 'r') as fp:
         match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", fp.read(), re.M)
         if match:
             return match.group(1)
