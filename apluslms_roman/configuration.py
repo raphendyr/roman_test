@@ -1,22 +1,38 @@
+from collections import OrderedDict
 from os import listdir
 from os.path import basename, dirname, isfile, isdir, join
-from yaml import load as load_yaml
+from yaml import (
+    add_representer as yaml_add_representer,
+    dump as dump_yaml,
+    load as load_yaml,
+)
 
 
 DEFAULT_NAME = 'course'
 DEFAULT_PREFIXES = ('yml', 'yaml', 'json')
 
 LEGACY_SOURCE = '<legacy a-plus-rst-tools support>'
-LEGACY_CONFIG = {
-    'version': 2,
-    'theme': 'aplus',
-    'steps': ({
-        'img': 'apluslms/compile-rst',
-        'cmd': ('make', 'touchrst', 'html'),
-        'mnt': '/compile',
-        'env': {'STATIC_CONTENT_HOST': "http://localhost:8080/static/default"},
-    },),
-}
+LEGACY_CONFIG = OrderedDict((
+    ('version', 2),
+    ('theme', 'aplus'),
+    ('steps', (OrderedDict((
+        ('img', 'apluslms/compile-rst'),
+        ('cmd', ('make', 'touchrst', 'html')),
+        ('mnt', '/compile'),
+        ('env', {'STATIC_CONTENT_HOST': "http://localhost:8080/static/default"}),
+    ),),)),
+))
+
+
+# Handle tuple: render as sequence
+def _represent_tuple(self, data):
+    return self.represent_sequence('tag:yaml.org,2002:seq', data)
+yaml_add_representer(tuple, _represent_tuple)
+
+# Handle OrderedDict: render as map
+def _represent_ordereddict(self, data):
+    return self.represent_mapping('tag:yaml.org,2002:map', data.items())
+yaml_add_representer(OrderedDict, _represent_ordereddict)
 
 
 class CourseConfigError(Exception):
@@ -72,6 +88,7 @@ class CourseConfig:
     def __init__(self, config, path, source=None, name=None):
         self.__path__ = path
         self.__source__ = source
+        self.__config__ = config
         self.name = name or basename(path)
 
 
@@ -82,6 +99,10 @@ class CourseConfig:
             if key[0] == '_':
                 raise CourseConfigError('Invalid option {} in configuration from {}'.format(key, source or '-'))
             setattr(self, key, value)
+
+
+    def __str__(self):
+        return "---\n" + dump_yaml(self.__config__)
 
 
 # http://peak.telecommunity.com/DevCenter/PythonEggs#accessing-package-resources
