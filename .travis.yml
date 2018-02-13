@@ -16,7 +16,7 @@ script:
 before_deploy:
   - "./.travis/pre_deploy.sh"
 deploy:
-  provider: releases
+- provider: releases
   api_key:
     secure: BtHV5uICPYsCn+84mWKP1UyI2mPGUgokLYWTN8xABwIV2nbkRV3w1YnSXbNlxIl7IZYp3pGC+msaSb0f7ko5Eac9eEWlXvY3MKKlcAxcjZHaCJlARBdyb1Uhh27ImDR0ypBSd50FWW8byxG9bTi2ht6ERHeumDA0Q7N5fox8nBYmhvMJUapAS+AnEcmmsFzOFdoLlfUTRaHSEIVWUnFv3w8LswaStZJZDdV93PBkFoEYH0qz7dyVHJkH1G7wil/QNKu7t3aAJ8xIQdt7AeHz3kGsEbMtMuWWM3LIhHExn+VdoghY6q5WTnglN5E8YGCALNRYyDmfHOKuXcoyLWQeaBgz1mNyomx/Hz21hJpmT6+p1I0AR03ne+N51YJE8V4owFvg79IkRU3KkJHWbh2s093a1ltn3sHOblg5nItVDaUl+j6Jo4o1lOa+77Paax306o8J0UCxDtpPI2cjKBFvY4UKkj9+SXIc9crBTLGISreYMq7SbHdNEOLsDYFXDG3EifO6o1Me74lJKHgDCLTuctfWzKY6iWGKgd92UW4vrzXzyGLPgRrHgyO4a6DPB/zf+AleKHFvsXxZ5+ZAJ1bN9gtQw1v16LE38X1iGqeTjewDYo6/FkvkXbwwMhZuv4koNuR41wMs+6Oub+QZ9VPx7lUmJOssnbdhlX5rIlLOMcQ=
   on:
@@ -30,3 +30,12 @@ deploy:
     - dist/*.whl
     - dist/*.tar.gz
     - dist/*.AppImage
+- provider: pypi
+  user: raphendyr
+  password:
+    secure: t9miabUcnXsWI9WQlmCM7fwhixtno/8XBbrSFM5rJWouV0anMgSSoz93Yxg3ybrRN/DYaqSp9H0XZJMD1KkguGeOVGK86s2td+Tm/0Ve86XWdAZfZ/mTx/3WnLSITuQvv0IaRavoRz9TBAyTyKMW/tO/NJ+QIZuSAulSt5IQLoLapCEl1nvVUCTwDA9SUQmscv6vRDRNoGQD7TPV1K51O9lW+AgksB1Ui5/EDbcsxtpzk8zQ5jd5lvHbnQowfMLfsmLonzGabxABpFXc4vxiyz2PpoyRToHA7e2HfORksv+XQhxFx96BdO+WEmsDEcZzHwirBVTbxr90hevaC6c/C8kRjiwMjSHDZ5dheOx1t1yuZ/MtVZa1dTcqGoMkzjB+4NRKgDEWk3JNF9OXcTaPncAbJm+DfbPM3cSyriW7EEjFOlYimipeu63YoSbuu6t1eU6FrZRWFN3EnG+bkb4TPNw3j/dyJYalqfUi3+gsbHrmh4Q/GY6qaNLQexTMYOCwcJb8Q7yPBpFM/FJCjXRiCOWaEphFRJ6ivK7kZcz2cklVW5GuQ2uvX605yhnofN8aLuTfaIOeY/sfOwq2HfkEqIz4XlRqc0g4z5L09GF2E+GACKWvtIRfGkKpj1DaMZIbTUQJYXKiYHaIJ7sUGS/gysFeUmvXZj3mgor5Mey2x9k=
+  distributions: sdist bdist_wheel
+  skip_upload_docs: true
+  on:
+    tags: true
+    python: 3.6

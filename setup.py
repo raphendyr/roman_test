@@ -25,7 +25,7 @@ with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 
 setup(
     name='apluslms-roman',
-    version='0.1.5-rc.1',
+    version='0.1.5-rc.2',
     description='Course material builder for online learning systems',
     long_description=long_description,
     keywords='apluslms material',

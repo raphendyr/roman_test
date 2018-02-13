@@ -42,7 +42,7 @@ Here is small example:
 Installation
 ------------
 
-You can install roman via pip :code:`pip install git+https://github.com/apluslms/roman.git#egg=apluslms-roman`.
+You can install roman via pip :code:`pip install apluslms-roman`.
 Alternatively you can download GUI binary from `releases page`_.
 
 .. _releases page: https://github.com/apluslms/roman/releases
