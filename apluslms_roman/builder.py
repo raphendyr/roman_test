@@ -2,8 +2,8 @@ from os import getuid, getegid
 from os.path import isdir, join
 
 from .backends import BuildStep, Environment
-from .logging import SimpleOutput
 from .helpers import import_string, cached_property
+from .observer import StreamObserver
 
 
 def clean_image_name(image):
@@ -13,11 +13,11 @@ def clean_image_name(image):
 
 
 class Builder:
-    def __init__(self, config, backend=None, output=None):
+    def __init__(self, config, backend=None, observer=None):
         assert isdir(config.__path__), "Course configuration path doesn't exists"
         self.config = config
         self.path = config.__path__
-        self.output = output or SimpleOutput()
+        self._observer = observer or StreamObserver()
 
         if not backend:
             from .backends.docker import DockerBackend
@@ -53,8 +53,12 @@ class Builder:
 
     def build(self):
         steps = self._steps
-        output = self.output
+        observer = self._observer
         backend = self._backend
 
-        backend.prepare(self._steps, output)
-        backend.build(self._steps, output)
+        observer.enter_prepare()
+        backend.prepare(self._steps, observer)
+        observer.enter_build()
+        result = backend.build(self._steps, observer)
+        observer.done(data=result)
+        return result

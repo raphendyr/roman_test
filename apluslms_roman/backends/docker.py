@@ -2,7 +2,10 @@ import docker
 from os.path import join
 
 from ..helpers import cached_property
-from . import Backend
+from . import (
+    Backend,
+    BuildResult,
+)
 
 
 Mount = docker.types.Mount
@@ -38,27 +41,40 @@ class DockerBackend(Backend):
 
         return opts
 
-    def prepare(self, steps, out):
+    def prepare(self, steps, observer):
         client = self._client
         for i, step in enumerate(steps):
+            observer.start_step(i)
             image, tag = step.img.split(':', 1)
             try:
                 img = client.images.get(step.img)
             except docker.errors.ImageNotFound:
-                out.manager(i, "Downloading image {}".format(step.img))
+                observer.manager_msg(i, "Downloading image {}".format(step.img))
                 img = client.images.pull(image, tag)
+            finally:
+                observer.end_step(i)
 
-    def build(self, steps, out):
+    def build(self, steps, observer):
         client = self._client
         for i, step in enumerate(steps):
+            observer.start_step(i)
             opts = self._run_opts(step)
-            out.manager(i, "Running container {}:".format(opts['image']))
+            observer.manager_msg(i, "Running container {}:".format(opts['image']))
             container = client.containers.create(**opts)
 
             try:
                 container.start()
 
                 for line in container.logs(stderr=True, stream=True):
-                    out.container(i, line.decode('utf-8'))
+                    observer.container_msg(i, line.decode('utf-8'))
+
+                ret = container.wait(timeout=10)
+                code = ret.get('StatusCode', None)
+                error = ret.get('Error', None)
+
+                if code or error:
+                    return BuildResult(code, error, i)
             finally:
                 container.remove()
+                observer.end_step(i)
+        return BuildResult()

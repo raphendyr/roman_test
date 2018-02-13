@@ -1,6 +1,7 @@
 import argparse
 from os import getcwd
 from os.path import abspath, expanduser, expandvars
+from sys import exit
 
 from . import CourseConfig, Builder
 
@@ -22,7 +23,10 @@ def main():
 
     config = CourseConfig.find_from(course)
     builder = Builder(config)
-    builder.build()
+    result = builder.build()
+    print(result)
+    exit(result.code or 0)
+
 
 
 if __name__ == '__main__':
