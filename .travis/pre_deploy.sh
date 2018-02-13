@@ -14,6 +14,7 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		hash -r
 		PYENV_VERSION=$(pyenv install --list|tr -d '[ \t]'|grep "^$PYENV_VERSION"|tail -n1)
 
+		pip install . simple_gui/
 		pip install -r requirements_build_osx.txt
 
 		# wheel distribution
@@ -24,6 +25,7 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		hdiutil create dist/roman-gui-$version-mac.dmg -srcfolder dist/ -ov
 		(cd dist && zip -r roman-gui-$version-mac.zip roman.app)
 	else
+		pip install . simple_gui/
 		pip install -r requirements_build_linux.txt
 
 		# source distribution
