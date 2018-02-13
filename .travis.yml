@@ -1,0 +1,32 @@
+language: python
+matrix:
+  include:
+    - os: linux
+      python: '3.6'
+      env: BUILD_DIST=true
+    - os: osx
+      language: generic
+      env: BUILD_DIST=true PYENV_VERSION=3.6
+  allow_failures:
+    - os: osx
+install:
+  - "./.travis/install.sh"
+script:
+  - "./.travis/run.sh"
+before_deploy:
+  - "./.travis/pre_deploy.sh"
+deploy:
+  provider: releases
+  api_key:
+    secure: BtHV5uICPYsCn+84mWKP1UyI2mPGUgokLYWTN8xABwIV2nbkRV3w1YnSXbNlxIl7IZYp3pGC+msaSb0f7ko5Eac9eEWlXvY3MKKlcAxcjZHaCJlARBdyb1Uhh27ImDR0ypBSd50FWW8byxG9bTi2ht6ERHeumDA0Q7N5fox8nBYmhvMJUapAS+AnEcmmsFzOFdoLlfUTRaHSEIVWUnFv3w8LswaStZJZDdV93PBkFoEYH0qz7dyVHJkH1G7wil/QNKu7t3aAJ8xIQdt7AeHz3kGsEbMtMuWWM3LIhHExn+VdoghY6q5WTnglN5E8YGCALNRYyDmfHOKuXcoyLWQeaBgz1mNyomx/Hz21hJpmT6+p1I0AR03ne+N51YJE8V4owFvg79IkRU3KkJHWbh2s093a1ltn3sHOblg5nItVDaUl+j6Jo4o1lOa+77Paax306o8J0UCxDtpPI2cjKBFvY4UKkj9+SXIc9crBTLGISreYMq7SbHdNEOLsDYFXDG3EifO6o1Me74lJKHgDCLTuctfWzKY6iWGKgd92UW4vrzXzyGLPgRrHgyO4a6DPB/zf+AleKHFvsXxZ5+ZAJ1bN9gtQw1v16LE38X1iGqeTjewDYo6/FkvkXbwwMhZuv4koNuR41wMs+6Oub+QZ9VPx7lUmJOssnbdhlX5rIlLOMcQ=
+  on:
+    repo: apluslms/roman
+    tags: true
+  skip_cleanup: true
+  file_glob: true
+  file:
+    - dist/*.dmg
+    - dist/*.zip
+    - dist/*.whl
+    - dist/*.tar.gz
+    - dist/*.AppImage
