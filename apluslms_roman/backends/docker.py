@@ -94,7 +94,7 @@ class DockerBackend(Backend):
         out = []
         okeys = ['Version', 'ApiVersion', 'MinAPIVersion', 'GoVersion', 'BuildTime', 'GitCommit', 'Experimental', 'Os', 'Arch', 'KernelVersion']
         version['Name'] = 'Client'
-        components = version.pop('Components')
+        components = version.pop('Components', [])
         components.insert(0, version)
 
         for component in components:
