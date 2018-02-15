@@ -12,7 +12,7 @@ from threading import Thread
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 
-from apluslms_roman import CourseConfig, Engine
+from apluslms_roman import __app_id__, CourseConfig, Engine
 from apluslms_roman.backends.docker import DockerBackend
 from apluslms_roman.observer import (
     Phase,
@@ -236,7 +236,7 @@ class Roman:
         master.protocol("WM_DELETE_WINDOW", self.quit)
         master.title("Roman - A+ LMS course builder")
 
-        self.settings = Settings('fi.aalto.apluslms.Roman', 'roman_tki.ini')
+        self.settings = Settings(__app_id__, 'roman_tki.ini')
         self.settings.set_defaults('window', (('geometry', ''),))
         self.settings.set_defaults('course', (('lasttime', ''),))
 
