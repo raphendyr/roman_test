@@ -35,5 +35,21 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		# pyinstaller binary in zip
 		pyinstaller --noconsole --onefile --name roman --add-data simple_gui/roman.png:. simple_gui/roman_tki.py
 		(cd dist && zip -r roman-gui-$version-linux.zip roman)
+
+		# pyinstaller dir in appimage
+		release="https://github.com/AppImage/AppImageKit/releases/download/10"
+		dir=dist/Roman.AppDir
+		mkdir -p $dir
+		pyinstaller --noconsole --name Roman --add-data simple_gui/roman.png:. simple_gui/roman_tki.py
+		mv dist/Roman dist/Roman.AppDir/usr/
+		sed 's,^Exec=.*$,Exec=./Roman,' simple_gui/roman.desktop > $dir/roman.desktop
+		ln -sT usr/roman.png dist/Roman.AppDir/roman.png
+		(cd $dir && wget "$release/AppRun-x86_64" -O AppRun && chmod +x AppRun)
+		(cd dist && \
+		 wget "$release/appimagetool-x86_64.AppImage" && chmod +x appimagetool-x86_64.AppImage && \
+		 ./appimagetool-x86_64.AppImage --appimage-extract && \
+		 ./squashfs-root/AppRun --comp xz Roman.AppDir && \
+		 mv Roman-x86_64.AppImage Roman-gui-$version-x86_64.AppImage && \
+		 rm -rf appimagetool-x86_64.AppImage squashfs-root Roman.AppDir)
 	fi
 fi
