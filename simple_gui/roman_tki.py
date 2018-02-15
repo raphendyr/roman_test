@@ -7,7 +7,7 @@ import tkinter as tk
 from collections import OrderedDict
 from configparser import ConfigParser
 from os import makedirs
-from os.path import exists, isdir, isfile, join, split as split_path
+from os.path import expanduser, exists, isdir, isfile, join, split as split_path
 from queue import Queue, Empty
 from threading import Thread
 from tkinter import filedialog, messagebox
@@ -254,7 +254,7 @@ class Roman:
 
         cols = 5
 
-        self.initial_dir = None
+        self.initial_dir = expanduser("~")
         self.config_dir = None
         self.config = None
         self.engine = None
