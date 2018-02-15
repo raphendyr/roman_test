@@ -33,7 +33,7 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		python setup.py sdist
 
 		# pyinstaller binary in zip
-		pyinstaller --noconsole --onefile --name roman --icon simple_gui/roman.ico simple_gui/roman_tki.py
+		pyinstaller --noconsole --onefile --name roman --add-data simple_gui/roman.png:. simple_gui/roman_tki.py
 		(cd dist && zip -r roman-gui-$version-linux.zip roman)
 	fi
 fi

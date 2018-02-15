@@ -2,6 +2,7 @@
 # -*- encoding: utf-8 -*-
 
 import appdirs
+import sys
 import tkinter as tk
 from collections import OrderedDict
 from configparser import ConfigParser
@@ -34,6 +35,14 @@ def path_end(path, num=1):
         path, tail = split_path(path)
         if tail: parts.append(tail)
     return join(*reversed(parts))
+
+
+def resource_path(filename):
+    # we are inside singlefile pyinstaller
+    if getattr(sys, 'frozen', False):
+        return join(sys._MEIPASS, filename)
+    dir_, _ = split_path(__file__)
+    return join(dir_, filename)
 
 
 def settings_id_to_sec_and_key(id_, def_sec):
@@ -235,6 +244,9 @@ class Roman:
         self.master = master
         master.protocol("WM_DELETE_WINDOW", self.quit)
         master.title("Roman - A+ LMS course builder")
+        img_file = resource_path('roman.png')
+        if isfile(img_file):
+            master.call('wm', 'iconphoto', master._w, tk.Image("photo", file=img_file))
 
         self.settings = Settings(__app_id__, 'roman_tki.ini')
         self.settings.set_defaults('window', (('geometry', ''),))
