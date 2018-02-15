@@ -42,10 +42,31 @@ Here is small example:
 Installation
 ------------
 
-You can install roman via pip :code:`pip install apluslms-roman`.
-Alternatively you can download GUI binary from `releases page`_.
+You can use prebuild binaries with graphical user inteface from `releases page`_.
+Alternatively, you can install cli version via pip :code:`pip install apluslms-roman` (will add :code:`roman` command).
 
 .. _releases page: https://github.com/apluslms/roman/releases
+
+
+List of graphical user inteface binaries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* :code:`*-linux.AppImage` is an AppImage_ package of Roman.
+  Download, mark file executable and run it.
+  Requires FUSE_ (installed on typical linux desktop).
+* :code:`*-linux.zip` contains a single-file executable.
+  Download, extract, run :code:`roman`.
+  Requires that files in :code:`/tmp/` can be executed.
+* :code:`*-mac.dmg` contains *Roman.app* in a disk image.
+  Download, open, drag *Roman.app* to e.g. *Applications*, run.
+  **Note**: On the first time you need to right or control-click the app, select *open* in the menu and finally *open* in the dialog.
+* :code:`*-mac.zip` contains *Roman.app* in a zip.
+  Same prosess as with above version.
+
+If you are not sure what file to use, then use the first one for your operating system.
+
+.. _AppImage: https://appimage.org/
+.. _FUSE: https://en.wikipedia.org/wiki/Filesystem_in_Userspace
 
 
 .. badges: http://shields.io/
