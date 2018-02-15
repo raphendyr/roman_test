@@ -49,7 +49,7 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		 wget "$release/appimagetool-x86_64.AppImage" && chmod +x appimagetool-x86_64.AppImage && \
 		 ./appimagetool-x86_64.AppImage --appimage-extract && \
 		 ./squashfs-root/AppRun --comp xz Roman.AppDir && \
-		 mv Roman-x86_64.AppImage Roman-gui-$version-x86_64.AppImage && \
+		 mv Roman-x86_64.AppImage Roman-gui-$version-linux.AppImage && \
 		 rm -rf appimagetool-x86_64.AppImage squashfs-root Roman.AppDir)
 	fi
 fi
