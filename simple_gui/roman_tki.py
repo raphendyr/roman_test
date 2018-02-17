@@ -298,7 +298,9 @@ class Roman:
         # position
         geo = st['window/geometry']
         if 'x' in geo and '+' in geo:
-            self.master.geometry(geo)
+            saved_size, saved_pos = geo.split('+', 1)
+            cur_size, cur_pos = self.master.geometry().split('+', 1)
+            self.master.geometry("%s+%s" % (cur_size, saved_pos))
 
         # active course
         try:
