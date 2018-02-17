@@ -1,4 +1,8 @@
 language: python
+cache:
+  directories:
+    - "$HOME/.cache/pip"
+    - "$HOME/.pyenv-roman"
 matrix:
   include:
     - os: linux
