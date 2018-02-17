@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Exec=roman_tki.py
+Icon=roman
+Name=Roman
+Comment=A course material builder for online learning systems (tkinter gui)
+Comment[fi]=Verkkokurssimateriaalin kääntötyökalu (tkinter gui)
+GenericName=Course material builder
+Categories=Development;Building;

@@ -5,6 +5,9 @@ version=${TRAVIS_TAG:-}
 pyver=${TRAVIS_PYTHON_VERSION:-${PYENV_VERSION}}
 
 if [ "$BUILD_DIST" = 'true' ]; then
+	appid=$(grep __app_id__ apluslms_roman/__init__.py|head -n1|cut -d"'" -f2)
+	appid="$appid.roman_tki"
+
 	if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
 		# pyenv
 		PYENV_ROOT="$HOME/.pyenv-roman"
@@ -21,7 +24,6 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		python setup.py bdist_wheel
 
 		# pyinstaller app image in dmg and zip
-		appid=$(grep __app_id__ apluslms_roman/__init__.py|head -n1|cut -d"'" -f2)
 		pyinstaller --noconsole --onefile --name Roman --icon simple_gui/roman.icns --osx-bundle-identifier="$appid" simple_gui/roman_tki.py
 		hdiutil create dist/roman-gui-$version-mac.dmg -srcfolder dist/ -ov
 		(cd dist && zip -r roman-gui-$version-mac.zip Roman.app)
@@ -42,8 +44,13 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		mkdir -p $dir
 		pyinstaller --noconsole --name Roman --add-data simple_gui/roman.png:. simple_gui/roman_tki.py
 		mv dist/Roman dist/Roman.AppDir/usr/
-		sed 's,^Exec=.*$,Exec=./Roman,' simple_gui/roman.desktop > $dir/roman.desktop
-		ln -sT usr/roman.png dist/Roman.AppDir/roman.png
+		ln -sT usr/roman.png $dir/roman.png
+		mkdir -p $dir/usr/share/applications
+		sed 's,^Exec=.*$,Exec=./Roman,' simple_gui/roman_tki.desktop > $dir/usr/share/applications/$appid.desktop
+		ln -sT usr/share/applications/$appid.desktop $dir/roman.desktop
+		mkdir -p $dir/usr/share/metainfo
+		# FIXME: following should be in path $dir/usr/share/metainfo/$appid.appdata.xml, but that is not recognized by appimagetool
+		sed -e "s,__app_id__,$appid,g" simple_gui/roman_tki.appdata.xml > $dir/usr/share/metainfo/roman.appdata.xml
 		(cd $dir && wget "$release/AppRun-x86_64" -O AppRun && chmod +x AppRun)
 		(cd dist && \
 		 wget "$release/appimagetool-x86_64.AppImage" && chmod +x appimagetool-x86_64.AppImage && \
