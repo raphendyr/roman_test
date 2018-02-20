@@ -24,6 +24,7 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		python setup.py bdist_wheel
 
 		# pyinstaller app image in dmg and zip
+		(cd simple_gui && ./create_icns_on_osx.sh)
 		pyinstaller --noconsole --onefile --name Roman --icon simple_gui/roman.icns --osx-bundle-identifier="$appid" simple_gui/roman_tki.py
 		hdiutil create dist/roman-gui-$version-mac.dmg -srcfolder dist/ -ov
 		(cd dist && zip -r roman-gui-$version-mac.zip Roman.app)

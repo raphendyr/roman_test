@@ -1,7 +1,5 @@
 #!/bin/sh -e
 
-png2icns roman.icns roman.png
-
 convert roman.png  -bordercolor white -border 0 \
 	\( -clone 0 -resize 16x16 \) \
 	\( -clone 0 -resize 32x32 \) \
