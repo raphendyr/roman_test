@@ -1,0 +1,14 @@
+{
+  "name": "createdsstore",
+  "version": "1.0.0",
+  "description": "Creates .DS_Store file with hard coded values",
+  "bin": "./cli.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jaakko Kantojärvi <jaakko.kantojarvi@aalto.fi>",
+  "license": "ISC",
+  "dependencies": {
+    "ds-store": "^0.1.6"
+  }
+}

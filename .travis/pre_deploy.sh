@@ -26,8 +26,8 @@ if [ "$BUILD_DIST" = 'true' ]; then
 		# pyinstaller app image in dmg and zip
 		(cd simple_gui && ./create_icns_on_osx.sh)
 		pyinstaller --noconsole --onefile --name Roman --icon simple_gui/roman.icns --osx-bundle-identifier="$appid" simple_gui/roman_tki.py
-		hdiutil create dist/roman-gui-$version-mac.dmg -srcfolder dist/ -ov
-		(cd dist && zip -r roman-gui-$version-mac.zip Roman.app)
+		./packaging/osx/create_dmg.sh dist/roman-gui-$version-mac-unsigned.dmg
+		(cd dist && zip -r roman-gui-$version-mac-unsigned.zip Roman.app)
 	else
 		pip install . simple_gui/
 		pip install -r requirements_build_linux.txt
