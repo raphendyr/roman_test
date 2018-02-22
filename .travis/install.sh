@@ -3,6 +3,8 @@ set -x
 
 if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
 	# pyenv repo
+	PYENV_VERSION=${PYENV_VERSION:-$TRAVIS_PYTHON_VERSION}
+	[ "$PYENV_VERSION" ] || { echo "Missing env PYENV_VERSION"; exit 1; }
 	PYENV_ROOT=$HOME/.pyenv-roman
 	if [ ! -e "$PYENV_ROOT/.git" ]; then
 		[ -e "$PYENV_ROOT" ] && rm -rf "$PYENV_ROOT"

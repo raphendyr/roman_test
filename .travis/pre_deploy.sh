@@ -10,6 +10,8 @@ if [ "$BUILD_DIST" = 'true' ]; then
 
 	if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
 		# pyenv
+		PYENV_VERSION=${PYENV_VERSION:-$TRAVIS_PYTHON_VERSION}
+		[ "$PYENV_VERSION" ] || { echo "Missing env PYENV_VERSION"; exit 1; }
 		PYENV_ROOT="$HOME/.pyenv-roman"
 		PATH="$PYENV_ROOT/bin:$PATH"
 		hash -r
