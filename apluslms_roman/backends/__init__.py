@@ -3,6 +3,11 @@ from collections import namedtuple
 from ..observer import BuildObserver
 
 
+BACKENDS = {
+    'docker': 'apluslms_roman.backends.docker.DockerBackend',
+}
+
+
 BuildTask = namedtuple('BuildTask', [
     'path',
     'steps',
@@ -61,6 +66,7 @@ class BuildResult:
 Environment = namedtuple('Environment', [
     'uid',
     'gid',
+    'environ',
 ])
 
 

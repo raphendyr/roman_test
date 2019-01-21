@@ -1,0 +1,48 @@
+---
+$schema: "http://json-schema.org/draft-04/schema"
+title: Roman Settings
+type: object
+
+allOf:
+  - $ref: version-v1.0
+
+optional:
+  - backend
+  - docker
+
+additionalProperties: false
+properties:
+  version: {}
+  backend:
+    title: backend driver
+    description: the container backend driver class
+    type: string
+    default: docker
+  docker:
+    title: docker backend options
+    description: options for Docker container executor backend
+    type: object
+    additionalProperties: false
+    properties:
+      host:
+        title: docker host
+        description: the URL to the Docker host
+        type: string
+      tls_verify:
+        title: docker TLS verify
+        description: verify the Docker daemon host against a CA certificate
+        type: boolean
+      cert_path:
+        title: docker cert path
+        description: a path to a directory containing TLS certificates to use when connecting to the Docker host
+        type: string
+      version:
+        title: docker API version
+        description: the version of the API to use
+        type: string
+      timeout:
+        title: docker API timeut
+        description: default timeout for API calls
+        type: integer
+        minimum: 0
+        exclusiveMinimum: true

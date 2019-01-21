@@ -1,7 +1,9 @@
-from os import getuid, getegid
+from os import environ, getuid, getegid
 from os.path import isdir, join
 
-from .backends import BuildTask, BuildStep, Environment
+from apluslms_yamlidator.utils.decorator import cached_property
+
+from .backends import BACKENDS, BuildTask, BuildStep, Environment
 from .observer import StreamObserver
 from .utils.importing import import_string
 
@@ -29,13 +31,30 @@ class Builder:
 
 
 class Engine:
-    def __init__(self, backend_class=None):
-        if not backend_class:
-            from .backends.docker import DockerBackend as backend_class
+    def __init__(self, backend_class=None, settings=None):
+        if backend_class is None:
+            if settings and 'backend' in settings:
+                backend_class = settings['backend']
+            else:
+                from .backends.docker import DockerBackend as backend_class
         if isinstance(backend_class, str):
+            if '.' not in backend_class:
+                backend_class = BACKENDS.get(backend_class, backend_class)
             backend_class = import_string(backend_class)
-        environment = Environment(getuid(), getegid())
-        self.backend = backend_class(environment)
+        self._backend_class = backend_class
+
+        name = getattr(backend_class, 'name', None) or backend_class.__name__.lower()
+        env_prefix = name.upper() + '_'
+        env = {k: v for k, v in environ.items() if k.startswith(env_prefix)}
+        if settings:
+            for k, v in settings.get(name, {}).items():
+                if v is not None and v != '':
+                    env[env_prefix + k.replace('-', '_').upper()] = v
+        self._environment = Environment(getuid(), getegid(), env)
+
+    @cached_property
+    def backend(self):
+        return self._backend_class(self._environment)
 
     def verify(self):
         return self.backend.verify()

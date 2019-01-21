@@ -24,7 +24,6 @@ info.update(dict(
     py_modules=['roman_tki'],
     install_requires=[
         core.core_requirement(core.NAME),
-        'appdirs >= 1.4.0',
     ],
     entry_points={
         'console_scripts': [

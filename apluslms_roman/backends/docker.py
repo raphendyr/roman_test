@@ -3,6 +3,7 @@ from os.path import join
 
 from apluslms_yamlidator.utils.decorator import cached_property
 
+from ..utils.translation import _
 from . import (
     Backend,
     BuildResult,
@@ -13,9 +14,22 @@ Mount = docker.types.Mount
 
 
 class DockerBackend(Backend):
+    name = 'docker'
+    debug_hint = _("""Do you have docker-ce installed and running?
+Are you in local 'docker' group? Have you logged out and back in after joining?
+You might be able to add yourself to that group with 'sudo adduser docker'.""")
+
     @cached_property
     def _client(self):
-        return docker.from_env()
+        env = self.environment.environ
+        kwargs = {}
+        version = env.get('DOCKER_VERSION', None)
+        if version:
+            kwargs['version'] = version
+        timeout = env.get('DOCKER_TIMEOUT', None)
+        if timeout:
+            kwargs['timeout'] = timeout
+        return docker.from_env(environment=env, **kwargs)
 
     def _run_opts(self, task, step):
         env = self.environment
