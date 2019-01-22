@@ -1,0 +1,2 @@
+# Build requirements for all
+setuptools >= 20.2

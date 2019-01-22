@@ -1,0 +1,7 @@
+include apluslms_roman/schemas/*.json
+include apluslms_roman/schemas/*.yaml
+include apluslms_roman/schemas/*.yml
+include LICENSE
+include README.*
+include requirements.txt
+global-exclude *.pyc

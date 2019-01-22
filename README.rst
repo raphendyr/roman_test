@@ -3,6 +3,9 @@ Roman
 
 |build status| |download release|
 
+:Abstract: Course material builder for online learning systems
+:Author: Jaakko Kantojärvi <jaakko.kantojarvi@aalto.fi>
+
 Roman is course material builder for A+ and other learning management systems.
 Roman uses docker_ to run different build steps.
 Course building steps are configure in :code:`course.yml`, which is read by roman.
