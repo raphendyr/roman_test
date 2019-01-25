@@ -2,8 +2,8 @@ from os import getuid, getegid
 from os.path import isdir, join
 
 from .backends import BuildTask, BuildStep, Environment
-from .helpers import import_string, cached_property
 from .observer import StreamObserver
+from .utils.importing import import_string
 
 
 class Builder:

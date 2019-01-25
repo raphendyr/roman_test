@@ -1,7 +1,8 @@
 import docker
 from os.path import join
 
-from ..helpers import cached_property
+from apluslms_yamlidator.utils.decorator import cached_property
+
 from . import (
     Backend,
     BuildResult,
