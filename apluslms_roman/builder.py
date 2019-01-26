@@ -6,12 +6,6 @@ from .helpers import import_string, cached_property
 from .observer import StreamObserver
 
 
-def clean_image_name(image):
-    if ':' not in image:
-        image += ':latest'
-    return image
-
-
 class Builder:
     def __init__(self, engine, config, observer=None):
         assert isdir(config.__path__), "Course configuration path doesn't exists"
