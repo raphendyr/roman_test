@@ -5,6 +5,8 @@ from io import StringIO
 
 import ruamel.yaml as ryaml
 
+from .collections import ChangesDict, ChangesList
+
 
 def _optional_stream(dumper):
     @wraps(dumper)
@@ -21,6 +23,8 @@ class Representer(ryaml.representer.RoundTripRepresenter):
     pass
 
 Representer.add_representer(OrderedDict, Representer.represent_dict)
+Representer.add_representer(ChangesDict, Representer.represent_dict)
+Representer.add_representer(ChangesList, Representer.represent_list)
 
 
 # Regular safe interface. No support for round-trip
