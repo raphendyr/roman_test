@@ -15,13 +15,90 @@ from glob import glob
 from os import path
 from pkg_resources import parse_version
 from setuptools import __version__ as setuptools_version, find_namespace_packages, find_packages, setup
+from setuptools.command.build_py import build_py
+from stat import ST_ATIME, ST_MTIME, ST_MODE, S_IMODE
 
 if StrictVersion(setuptools_version) < StrictVersion('20.2'):
     print('Your setuptools version does not support PEP 508. Have you installed requirements_build.txt?', file=sys.stderr)
     sys.exit(1)
 
+from json import dump as json_dump
+try:
+    from ruamel.yaml import YAML
+except ImportError:
+    print("You do not have ruamel.yaml installed. Have you installed requirements_build.txt?", file=sys.stderr)
+    sys.exit(1)
+else:
+    yaml_load = YAML(typ='safe').load
+
 
 ROOT = path.abspath(path.dirname(__file__))
+
+
+class BuildPyWithYamlConvert(build_py):
+    """Enhanced 'build_py' command that converts yaml schemas"""
+
+    def run(self):
+        super().run()
+        self.convert_yaml_schemas()
+
+    def __getattr__(self, attr):
+        if attr == 'schema_files':
+            self.data_files = self._get_data_files()
+            return self.schema_files
+        return super().__getattr__(attr)
+
+    def _is_schema_file(self, package, path, filename):
+        # filename has to end in .yaml or .yml
+        if not any(filename.endswith(x) for x in ('.yml', '.yaml')):
+            return False
+        # all yaml files in .schemas packages
+        if package.endswith('.schemas'):
+            return True
+        # if file is a valid yaml with '$schema' key in root
+        src = path.join(path, filename)
+        try:
+            with open(src, encoding='utf-8') as in_:
+                data = yaml_load(in_)
+        except Exception:
+            return False
+        return '$schema' in data
+
+    def _get_data_files(self):
+        data_files, schema_files = [], []
+        for package, src_dir, build_dir, filenames in super()._get_data_files():
+            datas, schemas = [], []
+            for filename in filenames:
+                group = schemas if self._is_schema_file(package, src_dir, filename) else datas
+                group.append(filename)
+            if datas:
+                data_files.append((package, src_dir, build_dir, datas))
+            if schemas:
+                schema_files.append((package, src_dir, build_dir, schemas))
+
+        self.schema_files = schema_files
+        return data_files
+
+    def convert_yaml_schemas(self):
+        """Convert YAML schema files to JSON under build path"""
+        for package, src_dir, build_dir, filenames in self.schema_files:
+            for filename in filenames:
+                src = path.join(src_dir, filename)
+                dst = path.join(build_dir, filename).rpartition('.')[0] + '.json'
+                self.mkpath(path.dirname(dst))
+                self.make_file(src, dst,
+                               self.convert_a_yaml_schema_to_json,
+                               (src, dst))
+
+    def convert_a_yaml_schema_to_json(self, src, dst):
+        # convert yaml to json
+        with open(src, encoding='utf-8') as in_,  open(dst, 'w', encoding='utf-8') as out:
+            json_dump(yaml_load(in_), out, indent='\t')
+
+        # copy mode and times: CPython, Lib/distutils/file_util.py, copy_file()
+        st = os.stat(src)
+        os.utime(dst, (st[ST_ATIME], st[ST_MTIME]))
+        os.chmod(dst, S_IMODE(st[ST_MODE]))
 
 
 def read(*file):
@@ -225,6 +302,9 @@ INFO = dict(
     },
 
     test_suite='tests',
+    cmdclass={
+        'build_py': BuildPyWithYamlConvert,
+    },
 )
 INFO.update((key, parse_rst_field(README, *fields))  for key, fields in INFO_FIELDS)
 
