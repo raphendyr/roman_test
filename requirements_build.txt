@@ -1,3 +1,4 @@
 # Build requirements for all
 ruamel.yaml >=0.15.89, <1
 setuptools >= 20.2
+wheel

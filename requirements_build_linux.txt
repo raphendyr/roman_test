@@ -1,1 +1,2 @@
-PyInstaller >= 3.2.1
+# Build requirements for Linuxes
+PyInstaller >= 3.4.0, <4

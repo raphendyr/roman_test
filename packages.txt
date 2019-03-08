@@ -1,0 +1,3 @@
+# Paths for python packages that are build by the project
+apluslms-yamlidator
+.

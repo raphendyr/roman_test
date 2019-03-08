@@ -23,6 +23,7 @@ from apluslms_roman.observer import (
 
 __author__ = 'io.github.apluslms'
 __app_id__ = 'io.github.apluslms.RomanTki'
+__version__ = '0.1.0'
 
 UPDATE_INTERVAL = 40
 FILE_TYPES = (
@@ -50,7 +51,6 @@ def resource_path(filename):
         path = join(dir_, filename)
         if exists(path):
             return path
-    author = app_id.rpartition('.')[0]
     dir_ = appdirs.user_data_dir(appname=__app_id__, appauthor=__author__)
     return join(dir_, filename)
 

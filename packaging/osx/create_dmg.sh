@@ -3,11 +3,14 @@
 scripts=$(dirname "$0")
 res=$scripts/res/
 
-out=$1
-[ "$out" ] || { echo "ERROR: missing output file"; exit 1; }
-dist=$(dirname "$out")
+apppath=$1
+dmgpath=$2
+[ "$apppath" -a -e "$apppath" ] || { echo "ERROR: missing .app file '$apppath'"; exit 1; }
+[ "$dmgpath" ] || { echo "ERROR: missing .dmg filename"; exit 1; }
 
-name=Roman
+name=$(basename "${apppath%.app}")
+dist=$(dirname "$dmgpath")
+
 bg1=$res/dmg-background.png
 bg2=$res/dmg-background@2x.png
 dss=$res/DS_Store
@@ -29,19 +32,20 @@ require_dpi() {
 require_dpi "$bg1" "72.000"
 require_dpi "$bg2" "144.000"
 
-d=$dist/$name
+tmp="$dist/$name"
+[ -e "$tmp" ] && rm -rf "$tmp"
+mkdir -p "$tmp/.background/"
 
-rm -rf $d
-mkdir -p $d/.background/
+cp -r "$apppath" "$tmp/"
+cp "$bg1" "$tmp/.background/dmg-background.png"
+cp "$bg2" "$tmp/.background/dmg-background@2x.png"
+cp "$dss" "$tmp/.DS_Store"
 
-cp -r $dist/$name.app $d/
-cp "$bg1" $d/.background/dmg-background.png
-cp "$bg2" $d/.background/dmg-background@2x.png
-cp "$dss" $d/.DS_Store
+SetFile -a icnv "$tmp/.background" "$tmp/.DS_Store"
+ln -s /Applications "$tmp/Applications"
 
-SetFile -a icnv $d/.background $d/.DS_Store
-ln -s /Applications $d/Applications
-
-hdiutil create $out \
+[ -e "$dmgpath" ] && rm -f "$dmgpath"
+hdiutil create "$dmgpath" \
   -format UDZO -imagekey zlib-level=9 \
-  -volname $name -srcfolder $d/ -ov
+  -volname "$name" -srcfolder "$tmp/" -ov
+rm -rf "$tmp"

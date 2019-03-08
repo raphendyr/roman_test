@@ -2,8 +2,8 @@
 __pycache__/
 .DS_Store
 
-/*.spec
-/*.egg-info/
+setup.cfg
+*.egg-info/
 /build/
 /dist/
 /venv/

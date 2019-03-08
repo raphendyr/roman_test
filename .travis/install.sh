@@ -1,32 +1,30 @@
 #!/bin/sh -e
-set -x
 
-if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
-	# pyenv repo
-	PYENV_VERSION=${PYENV_VERSION:-$TRAVIS_PYTHON_VERSION}
-	[ "$PYENV_VERSION" ] || { echo "Missing env PYENV_VERSION"; exit 1; }
-	PYENV_ROOT=$HOME/.pyenv-roman
-	if [ ! -e "$PYENV_ROOT/.git" ]; then
-		[ -e "$PYENV_ROOT" ] && rm -rf "$PYENV_ROOT"
-		git clone https://github.com/yyuu/pyenv.git "$PYENV_ROOT"
-	else
-	   (cd "$PYENV_ROOT"; git pull)
-	fi
+INSTALL_SCRIPT=true
+. .travis/_include.sh
 
-	# pyenv env
-	PATH="$PYENV_ROOT/bin:$PATH"
-	hash -r
-	eval "$(pyenv init -)"
-	hash -r
+print_header "Install dependencies"
 
-	# python version
-	PYENV_VERSION=$(pyenv install --list|tr -d '[ \t]'|grep "^$PYENV_VERSION"|tail -n1)
-	if [ -z "$PYENV_VERSION" ]; then pyenv install --list; exit 1; fi
-	PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install -s $PYENV_VERSION
-
-
-	pip install wheel
+if [ "$OS_NAME" = 'linux' -a "$TRAVIS" = 'true' ]; then
+    print_step "System packages"
+    sudo apt-get -qqy install appstream || true
 fi
 
-pip install -r requirements.txt
+print_step "Installing environment"
+create_build_paths
+install_python
+activate_python
+pip install --upgrade pip setuptools wheel
+
+# setup.py and build requirements
+print_step "Installing build dependencies"
+pip install -r requirements_build.txt
+[ -e "requirements_build_$TRAVIS_OS_NAME.txt" ] && pip install -r "requirements_build_$TRAVIS_OS_NAME.txt"
+
+# test requirements
+print_step "Installing test dependencies"
 pip install -r requirements_test.txt
+
+# generate setup.cfg files
+print_step "Writing setup.cfg to all packages"
+create_setup_cfgs $PACKAGES simple_gui

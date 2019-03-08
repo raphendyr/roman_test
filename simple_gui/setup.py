@@ -15,7 +15,7 @@ core = _import('setup', path.dirname(here), 'setup.py')
 info = core.INFO.copy()
 info.update(dict(
     name=core.NAME + '-tki',
-    version='0.1.0',
+    version=core.get_version(here, 'roman_tki.py')[0],
     description=info['description']+', tkinter gui',
     long_description=core.read(here, 'README.rst'),
 
