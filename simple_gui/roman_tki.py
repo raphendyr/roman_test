@@ -6,14 +6,14 @@ import sys
 import tkinter as tk
 from collections import OrderedDict
 from configparser import ConfigParser
-from os import makedirs
+from os import makedirs, pathsep
 from os.path import expanduser, exists, isdir, isfile, join, split as split_path
 from queue import Queue, Empty
 from threading import Thread
 from tkinter import filedialog, messagebox
 from tkinter import ttk
 
-from apluslms_roman import __app_id__, CourseConfig, Engine
+from apluslms_roman import __app_id__ as __roman_id__, CourseConfig, Engine
 from apluslms_roman.backends.docker import DockerBackend
 from apluslms_roman.observer import (
     Phase,
@@ -21,6 +21,8 @@ from apluslms_roman.observer import (
     BuildObserver,
 )
 
+__author__ = 'io.github.apluslms'
+__app_id__ = 'io.github.apluslms.RomanTki'
 
 UPDATE_INTERVAL = 40
 FILE_TYPES = (
@@ -39,9 +41,17 @@ def path_end(path, num=1):
 
 def resource_path(filename):
     # we are inside singlefile pyinstaller
+    paths = appdirs.site_data_dir(appname=__app_id__, appauthor=False, multipath=True).split(pathsep)
     if getattr(sys, 'frozen', False):
-        return join(sys._MEIPASS, filename)
-    dir_, _ = split_path(__file__)
+        paths.insert(0, sys._MEIPASS)
+    else:
+        paths.append(split_path(__file__)[0])
+    for dir_ in paths:
+        path = join(dir_, filename)
+        if exists(path):
+            return path
+    author = app_id.rpartition('.')[0]
+    dir_ = appdirs.user_data_dir(appname=__app_id__, appauthor=__author__)
     return join(dir_, filename)
 
 
@@ -248,7 +258,7 @@ class Roman:
         if isfile(img_file):
             master.call('wm', 'iconphoto', master._w, tk.Image("photo", file=img_file))
 
-        self.settings = Settings(__app_id__, 'roman_tki.ini')
+        self.settings = Settings(__roman_id__, 'roman_tki.ini')
         self.settings.set_defaults('window', (('geometry', ''),))
         self.settings.set_defaults('course', (('lasttime', ''),))
 
