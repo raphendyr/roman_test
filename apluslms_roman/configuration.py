@@ -89,8 +89,3 @@ class CourseConfig:
 
     def __str__(self):
         return "---\n" + dump_yaml(self.__config__)
-
-
-# http://peak.telecommunity.com/DevCenter/PythonEggs#accessing-package-resources
-#from pkg_resources import resource_string
-#foo_config = resource_string(__name__, 'foo.conf')

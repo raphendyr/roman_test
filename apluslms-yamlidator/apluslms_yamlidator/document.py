@@ -9,6 +9,7 @@ from os.path import dirname, exists
 from .utils.collections import Changes, MutableMapping, Sequence
 from .utils.version import parse_version
 from .utils.yaml import Dict, rt_dump_all as dump_all, rt_load_all as load_all
+from .validator import ValidationError, Validator
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,18 @@ def find_ml(current, keys):
 
 
 class Versioned:
+    _schema = None
+    _validator_manager = None
     _version_key = 'version'
+
+    @classmethod
+    def get_validator(cls, version):
+        if cls._schema:
+            validator = cls._validator_manager or Validator.get_default()
+            return validator.get_validator(cls._schema, *version)
+        elif cls._validator_manager:
+            raise TypeError("{}._validator_manager is set, but ._schema is missing".format(cls.__name__))
+        return None
 
     def __init__(self, path, version_key=None, allow_missing=False):
         self.path = path
@@ -77,13 +89,16 @@ class Versioned:
         documents = [(version, idx, data) for idx, (version, data) in enumerate(self._documents)]
         documents.sort()
         for version, index, data in documents:
+            # NOTE: validation is skipped when iterating
             yield self._document_class(self, index, data, version)
 
-    def _getitem(self, index):
+    def _getitem(self, index, validate=True):
         if index < 0:
             raise IndexError('negative indexes are not accepted')
         version, data = self._documents[index]
         document = self._document_class(self, index, data, version)
+        if version is not None and validate:
+            document.validate()
         return document
 
     def _setitem(self, index, data):
@@ -98,7 +113,7 @@ class Versioned:
         self._versions[version] = index
         return index
 
-    def get_latest(self, max_version=None):
+    def get_latest(self, max_version=None, validate=True):
         if self._version_key:
             if max_version is not None:
                 max_version = parse_version(max_version)
@@ -108,8 +123,8 @@ class Versioned:
             version = max(versions, default=None)
             if not version:
                 raise KeyError(max_version)
-            return self._getitem(self._versions[version])
-        return self._getitem(len(self._documents) - 1)
+            return self._getitem(self._versions[version], validate=validate)
+        return self._getitem(len(self._documents) - 1, validate=validate)
 
     def save(self):
         documents = [data for version, data in self._documents]
@@ -130,8 +145,9 @@ class Versioned:
 
 
     def __repr__(self):
-        return "<%s('%s')>" % (
+        return "<%s['%s']('%s')>" % (
             self.__class__.__name__,
+            self._schema,
             self.path,
         )
 
@@ -139,7 +155,7 @@ class Versioned:
 class DocumentMeta(ABCMeta):
     def __new__(metacls, name, bases, namespace, **kwargs):
         container = namespace.pop('Container', None)
-        container_args = ('version_key')
+        container_args = ('schema', 'validator_manager', 'version_key')
         extras = {k: namespace.pop(k) for k in container_args if k in namespace}
 
         for arg in container_args:
@@ -199,6 +215,38 @@ class Document(MutableMapping, metaclass=DocumentMeta):
     @property
     def path(self):
         return self._container.path
+
+    @property
+    def validator(self):
+        if self.version is None:
+            raise ValueError("Unable to a create validate for a document without version info")
+        return self.Container.get_validator(self.version)
+
+    @property
+    def validator_id(self):
+        validator = self.validator
+        return validator.ID_OF(validator.schema)
+
+    def validate(self, quiet=False):
+        validator = self.validator
+        if validator:
+            try:
+                validator.validate(self._data)
+            except ValidationError as err:
+                err.schema_id = id_ = validator.ID_OF(validator.schema)
+                parent = err.parent.instance if err.parent is not None else self._data
+                if err.path:
+                    dict_, key = find_ml(parent, err.path)
+                    if hasattr(dict_, '_data'):
+                        dict_ = dict_._data
+                    ln, cn = dict_.lc.value(key)
+                else:
+                    lc = parent._data.lc
+                    ln, cn = lc.line, lc.col
+                err.source = (self._container.path, ln, cn)
+                if not quiet:
+                    logger.error("A document '%s' does not validate against schema %s", self._container.path, id_)
+                raise err
 
     def upgrade(self, version):
         version = parse_version(version)

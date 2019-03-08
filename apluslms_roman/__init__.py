@@ -5,3 +5,5 @@ __app_id__ = 'io.github.apluslms.Roman'
 
 from .configuration import CourseConfig
 from .builder import Builder, Engine
+
+from . import schemas # register our schemas
