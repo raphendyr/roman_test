@@ -18,6 +18,7 @@ Check out :code:`Ariel`.
 It is an extension to sphinx build process that is used to build RST course material to HTML and YAML files.
 It can simple be used by adding :code:`apluslms/ariel` to build steps.
 
+
 Course configuration
 --------------------
 
@@ -46,7 +47,7 @@ Installation
 ------------
 
 You can use prebuild binaries with graphical user inteface from `releases page`_.
-Alternatively, you can install cli version via pip ``pip3 install --user apluslms-roman``, which will add ``$HOME/.local/bin/roman``.
+Alternatively, you can install cli version via pip ``pip3 install --user apluslms-roman[docker]``, which will add ``$HOME/.local/bin/roman``.
 Presuming you have that in your ``PATH``, then you can execute ``roman --help`` to get started.
 
 .. _releases page: https://github.com/apluslms/roman/releases
