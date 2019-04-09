@@ -1,4 +1,5 @@
 from collections import namedtuple
+from collections.abc import Mapping
 
 from ..observer import BuildObserver
 
@@ -31,11 +32,11 @@ class BuildStep:
 
     @classmethod
     def from_config(cls, data):
-        if isinstance(data, dict):
+        if isinstance(data, Mapping):
             if 'img' not in data:
                 raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
             img = clean_image_name(data['img'])
-            return cls(img, data.get('cmd'), data.get('mnt'), data.get('env'))
+            return cls(img, data.get('cmd'), data.get('mnt'), dict(data.get('env', {})))
         else:
             return cls(clean_image_name(data), None, None, None)
 

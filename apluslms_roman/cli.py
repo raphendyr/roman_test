@@ -352,7 +352,7 @@ def config_print_action(context):
         yaml_dump(context.settings._data, stdout)
     if all_ or context.args.project:
         print("---\n# project config")
-        yaml_dump(vars(get_config(context)), stdout)
+        yaml_dump(get_config(context)._data, stdout)
 
 
 def validate_schema_action(context):

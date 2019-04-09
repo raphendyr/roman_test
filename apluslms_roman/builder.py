@@ -10,9 +10,10 @@ from .utils.importing import import_string
 
 class Builder:
     def __init__(self, engine, config, observer=None):
-        assert isdir(config.__path__), "Course configuration path doesn't exists"
+        if not isdir(config.dir):
+            raise ValueError("config.dir isn't a directory.")
         self.config = config
-        self.path = config.__path__
+        self.path = config.dir
         self._engine = engine
         self._observer = observer or StreamObserver()
 
