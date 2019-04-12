@@ -163,16 +163,15 @@ class DocumentMeta(ABCMeta):
 
         cls = super().__new__(metacls, name, bases, namespace, **kwargs)
 
-        if container or extras:
-            if not container:
-                container = cls.Container
-            container_namespace = {'_'+k: (extras.get(k) or getattr(container, '_'+k)) for k in container_args}
-            container_namespace['_document_class'] = cls
-            cls.Container = type(
-                '%s-%s' % (name, container.__name__),
-                (container,),
-                container_namespace,
-            )
+        if not container:
+            container = cls.Container
+        container_namespace = {'_'+k: (extras.get(k) or getattr(container, '_'+k)) for k in container_args}
+        container_namespace['_document_class'] = cls
+        cls.Container = type(
+            '%s-%s' % (name, container.__name__),
+            (container,),
+            container_namespace,
+        )
 
         return cls
 
