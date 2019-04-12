@@ -59,39 +59,41 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
     def prepare(self, task, observer):
         client = self._client
         for i, step in enumerate(task.steps):
-            observer.start_step(i)
+            name = step.name or i
+            observer.start_step(name)
             image, tag = step.img.split(':', 1)
             try:
                 img = client.images.get(step.img)
             except docker.errors.ImageNotFound:
-                observer.manager_msg(i, "Downloading image {}".format(step.img))
+                observer.manager_msg(name, "Downloading image {}".format(step.img))
                 img = client.images.pull(image, tag)
             finally:
-                observer.end_step(i)
+                observer.end_step(name)
 
     def build(self, task, observer):
         client = self._client
         for i, step in enumerate(task.steps):
-            observer.start_step(i)
+            name = step.name or str(i)
+            observer.start_step(name)
             opts = self._run_opts(task, step)
-            observer.manager_msg(i, "Running container {}:".format(opts['image']))
+            observer.manager_msg(name, "Running container {}:".format(opts['image']))
             container = client.containers.create(**opts)
 
             try:
                 container.start()
 
                 for line in container.logs(stderr=True, stream=True):
-                    observer.container_msg(i, line.decode('utf-8'))
+                    observer.container_msg(name, line.decode('utf-8'))
 
                 ret = container.wait(timeout=10)
                 code = ret.get('StatusCode', None)
                 error = ret.get('Error', None)
 
                 if code or error:
-                    return BuildResult(code, error, i)
+                    return BuildResult(code, error, name)
             finally:
                 container.remove()
-                observer.end_step(i)
+                observer.end_step(name)
         return BuildResult()
 
     def verify(self):

@@ -52,7 +52,7 @@ class StreamObserver(BuildObserver):
 
     def _message(self, phase, type_, step=None, data=None):
         if type_ == Message.ENTER: return
-        phase_s = '{} {:d}'.format(phase.name, step) if step is not None else phase.name
+        phase_s = '{} {}'.format(phase.name, step) if step is not None else phase.name
         if type_ == Message.CONTAINER_MSG:
             fmt = '{} >> {}'
         elif type_ == Message.MANAGER_MSG:
