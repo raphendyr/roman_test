@@ -155,6 +155,9 @@ def create_parser(version=__version__,
     parser.add_argument('--debug',
         action='store_true',
         help=_("show all logged messages"))
+    parser.add_argument('-s', '--steps',
+        action='store_true',
+        help=_("list all available steps and exit"))
 
     # global roman settings (user settings)
     parser.add_argument('-c', '--config',
@@ -293,7 +296,7 @@ def get_engine(context):
     try:
         return Engine(settings=context.settings)
     except ImportError:
-        exit(1, _("ERROR: Unaböe to find backend '{}'.").format(context.settings.get('backend', 'docker')))
+        exit(1, _("ERROR: Unable to find backend '{}'.").format(context.settings.get('backend', 'docker')))
 
 
 def get_config(context):
@@ -331,11 +334,25 @@ def build_action(context):
     config = get_config(context)
     engine = get_engine(context)
 
+    builder = engine.create_builder(config)
+
+    if (context.parser.parse_args().steps):
+        steps = builder.buildSteps()
+        num_len = len(str(len(steps)))
+        name_len = len(max(steps, key=lambda s: len(s.name or "")).name)
+        for step in steps:
+            ref = str(step.ref)
+            name = step.name or ""
+            print(
+                ref + "." + " " * (1 + num_len - len(ref) + name_len - len(name)) +
+                name + "  " + step.img
+            )
+        return
+
     if not verify_engine(engine, only_when_error=True):
         return 1
 
     # build course
-    builder = engine.create_builder(config)
     result = builder.build()
     print(result)
     return result.code
@@ -411,7 +428,6 @@ def backend_test_action(context, verbose=False):
         print('\n')
         print(engine.version_info())
     return 0
-
 
 if __name__ == '__main__':
     main()

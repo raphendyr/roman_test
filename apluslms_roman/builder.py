@@ -17,10 +17,13 @@ class Builder:
         self._engine = engine
         self._observer = observer or StreamObserver()
 
+    def buildSteps(self):
+        return [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
+
     def build(self):
         backend = self._engine.backend
         observer = self._observer
-        steps = [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
+        steps = self.buildSteps()
         task = BuildTask(self.path, steps)
 
         observer.enter_prepare()

@@ -29,7 +29,7 @@ class BuildStep:
     env: If not None, dict that is given as environment for the image
     ref: Name/index of the step
     """
-    __slots__ = ('img', 'cmd', 'mnt', 'env', 'ref')
+    __slots__ = ('img', 'cmd', 'mnt', 'env', 'name', 'ref')
 
     @classmethod
     def from_config(cls, index, data):
@@ -42,16 +42,17 @@ class BuildStep:
                 data.get('cmd'),
                 data.get('mnt'),
                 dict(data.get('env', {})),
-                data.get('ref') or str(index)
+                data.get('name'),
+                index
             )
         else:
             return cls(clean_image_name(data), None, None, None, None)
 
-    def __init__(self, img, cmd, mnt, env, ref):
-        self.img, self.cmd, self.mnt, self.env, self.ref = img, cmd, mnt, env, ref
+    def __init__(self, img, cmd, mnt, env, name, ref):
+        self.img, self.cmd, self.mnt, self.env, self.name, self.ref = img, cmd, mnt, env, name, ref
 
     def __str__(self):
-        return self.ref
+        return self.name or str(self.ref)
 
 
 class BuildResult:
