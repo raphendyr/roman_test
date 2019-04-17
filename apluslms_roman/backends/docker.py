@@ -58,42 +58,40 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
 
     def prepare(self, task, observer):
         client = self._client
-        for i, step in enumerate(task.steps):
-            name = step.name or i
-            observer.start_step(name)
+        for step in task.steps:
+            observer.start_step(step)
             image, tag = step.img.split(':', 1)
             try:
                 img = client.images.get(step.img)
             except docker.errors.ImageNotFound:
-                observer.manager_msg(name, "Downloading image {}".format(step.img))
+                observer.manager_msg(step, "Downloading image {}".format(step.img))
                 img = client.images.pull(image, tag)
             finally:
-                observer.end_step(name)
+                observer.end_step(step)
 
     def build(self, task, observer):
         client = self._client
-        for i, step in enumerate(task.steps):
-            name = step.name or str(i)
-            observer.start_step(name)
+        for step in task.steps:
+            observer.start_step(step)
             opts = self._run_opts(task, step)
-            observer.manager_msg(name, "Running container {}:".format(opts['image']))
+            observer.manager_msg(step, "Running container {}:".format(opts['image']))
             container = client.containers.create(**opts)
 
             try:
                 container.start()
 
                 for line in container.logs(stderr=True, stream=True):
-                    observer.container_msg(name, line.decode('utf-8'))
+                    observer.container_msg(step, line.decode('utf-8'))
 
                 ret = container.wait(timeout=10)
                 code = ret.get('StatusCode', None)
                 error = ret.get('Error', None)
 
                 if code or error:
-                    return BuildResult(code, error, name)
+                    return BuildResult(code, error, step)
             finally:
                 container.remove()
-                observer.end_step(name)
+                observer.end_step(step)
         return BuildResult()
 
     def verify(self):

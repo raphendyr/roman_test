@@ -27,22 +27,31 @@ class BuildStep:
     cmd: If not None, docker command
     mnt: If not None, course data is mounted to this path in RW mode
     env: If not None, dict that is given as environment for the image
-    name: Name of the step
+    ref: Name/index of the step
     """
-    __slots__ = ('img', 'cmd', 'mnt', 'env', 'name')
+    __slots__ = ('img', 'cmd', 'mnt', 'env', 'ref')
 
     @classmethod
-    def from_config(cls, data):
+    def from_config(cls, index, data):
         if isinstance(data, Mapping):
             if 'img' not in data:
                 raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
             img = clean_image_name(data['img'])
-            return cls(img, data.get('cmd'), data.get('mnt'), dict(data.get('env', {})), data.get('name'))
+            return cls(
+                img,
+                data.get('cmd'),
+                data.get('mnt'),
+                dict(data.get('env', {})),
+                data.get('ref') or str(index)
+            )
         else:
             return cls(clean_image_name(data), None, None, None, None)
 
-    def __init__(self, img, cmd, mnt, env, name):
-        self.img, self.cmd, self.mnt, self.env, self.name = img, cmd, mnt, env, name
+    def __init__(self, img, cmd, mnt, env, ref):
+        self.img, self.cmd, self.mnt, self.env, self.ref = img, cmd, mnt, env, ref
+
+    def __str__(self):
+        return self.ref
 
 
 class BuildResult:

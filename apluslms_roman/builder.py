@@ -20,7 +20,7 @@ class Builder:
     def build(self):
         backend = self._engine.backend
         observer = self._observer
-        steps = [BuildStep.from_config(step) for step in self.config.steps]
+        steps = [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
         task = BuildTask(self.path, steps)
 
         observer.enter_prepare()
