@@ -1,0 +1,41 @@
+---
+$schema: "http://json-schema.org/draft-04/schema"
+title: Course config
+type: object
+definitions:
+  step:
+    type: object
+    additionalProperties: false
+    required:
+      - img
+    properties:
+      img:
+        type: string
+        description: the docker image
+      cmd:
+        type: string
+        description: commands to execute
+      mnt:
+        type: string
+      env:
+        type: object
+      name:
+        type: string
+        description: name of the step
+
+
+allOf:
+  - $ref: version-v1.0
+
+additionalProperties: false
+properties:
+  version: {}
+  steps:
+    type: array
+    items:
+      $ref: '#/definitions/step'
+      
+required:
+  - version
+  - steps
+

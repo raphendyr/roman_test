@@ -30,8 +30,8 @@ def is_legacy_configuration(path):
     return isfile(join(path, 'conf.py')) and isfile(join(path, 'Makefile'))
 
 class CourseConfig(Document):
-    name = 'course_configuration'
-    #schema = name
+    name = 'course_config'
+    schema = name
     version = Version(2, 0)
 
     @classmethod
