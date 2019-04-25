@@ -158,6 +158,9 @@ def create_parser(version=__version__,
     parser.add_argument('-s', '--steps',
         action='store_true',
         help=_("list all available steps and exit"))
+    parser.add_argument('--buildsteps', nargs='+',
+        help=_("select which steps to build and in which order (use either index or step name)"))
+    # setting file support
 
     # global roman settings (user settings)
     parser.add_argument('-c', '--config',
@@ -353,7 +356,7 @@ def build_action(context):
         return 1
 
     # build course
-    result = builder.build()
+    result = builder.build(context.parser.parse_args().buildsteps)
     print(result)
     return result.code
 

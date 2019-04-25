@@ -20,12 +20,14 @@ class Builder:
     def buildSteps(self):
         return [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
 
-    def build(self):
+    def build(self, step_list=[]):
         backend = self._engine.backend
         observer = self._observer
         steps = self.buildSteps()
+        if (step_list):
+            name_dict = {step.name: step for step in steps}
+            steps = [name_dict[step] if step in name_dict.keys() else steps[int(step)] for step in step_list]
         task = BuildTask(self.path, steps)
-
         observer.enter_prepare()
         backend.prepare(task, observer)
         observer.enter_build()
