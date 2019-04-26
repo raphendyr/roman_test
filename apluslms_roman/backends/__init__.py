@@ -36,19 +36,18 @@ class BuildStep:
         if isinstance(data, Mapping):
             if 'img' not in data:
                 raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
-            img = clean_image_name(data['img'])
             return cls(
-                img,
+                index,
+                clean_image_name(data['img']),
                 data.get('cmd'),
                 data.get('mnt'),
                 dict(data.get('env', {})),
                 data.get('name'),
-                index
             )
         else:
-            return cls(clean_image_name(data), None, None, None, None)
+            return cls(index, clean_image_name(data))
 
-    def __init__(self, img, cmd, mnt, env, name, ref):
+    def __init__(self, ref, img, cmd=None, mnt=None, env=None, name=None):
         self.img, self.cmd, self.mnt, self.env, self.name, self.ref = img, cmd, mnt, env, name, ref
 
     def __str__(self):
