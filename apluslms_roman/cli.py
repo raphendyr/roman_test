@@ -158,8 +158,6 @@ def create_parser(version=__version__,
     parser.add_argument('-s', '--steps',
         action='store_true',
         help=_("list all available steps and exit"))
-    parser.add_argument('--buildsteps', nargs='+',
-        help=_("select which steps to build and in which order (use either index or step name)"))
     # setting file support
 
     # global roman settings (user settings)
@@ -229,6 +227,10 @@ def add_cli_actions(parser):
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
         help=_("build the course (default action)"))
+    build.add_argument('course', nargs='?',
+        help=_("location of the course definition (default: current working dir)"))
+    build.add_argument('--buildsteps', nargs='+',
+        help=_("select which steps to build and in which order (use either index or step name)"))
 
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
@@ -340,16 +342,12 @@ def build_action(context):
     builder = engine.create_builder(config)
 
     if (context.parser.parse_args().steps):
-        steps = builder.buildSteps()
+        steps = builder.get_steps()
         num_len = len(str(len(steps)))
         name_len = len(max(steps, key=lambda s: len(s.name or "")).name)
+        step_str = "{:%dd}. {:%ds} {}" % (num_len, name_len)
         for step in steps:
-            ref = str(step.ref)
-            name = step.name or ""
-            print(
-                ref + "." + " " * (1 + num_len - len(ref) + name_len - len(name)) +
-                name + "  " + step.img
-            )
+            print(step_str.format(step.ref, step.name or "", step.img))
         return
 
     if not verify_engine(engine, only_when_error=True):
