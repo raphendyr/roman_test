@@ -108,6 +108,22 @@ class CallbackArgumentParser(argparse.ArgumentParser):
             raise RuntimeError
         return self._callback_subparsers.add_parser(*args, **kwargs)
 
+    def copy_defaults_to(self, parser):
+        # NOTE: uses undocumented private API
+        defaults = {}
+
+        # add any action defaults that aren't present
+        for action in self._actions:
+            if action.dest is not argparse.SUPPRESS and action.default is not argparse.SUPPRESS:
+                defaults.setdefault(action.dest, action.default)
+
+        # add any parser defaults that aren't present
+        for dest in self._defaults:
+            defaults.setdefault(dest, self._defaults[dest])
+
+        if defaults:
+            parser.set_defaults(**defaults)
+
 
 ## The command-line interface
 
@@ -182,9 +198,6 @@ def parse_actioncontext(parser):
 # parser configuration for roman cli
 
 def add_cli_actions(parser):
-    parser.set_callback(build_action)
-    parser.set_defaults(course=None)
-
     parser.set_subparser_defaults(
         metavar=_('COMMAND'),
         help=_("a list of sub commands:"))
@@ -197,6 +210,10 @@ def add_cli_actions(parser):
         help=_("build the course (default action)"))
     build.add_argument('course', nargs='?',
         help=_("location of the course definition (default: current working dir)"))
+
+    # build is the default callback. set defaults for it (e.g. course to None)
+    build.copy_defaults_to(parser)
+    parser.set_callback(build_action)
 
     config = parser.add_parser('config', aliases=['c'],
         callback=config_print_action,
