@@ -17,16 +17,24 @@ class Builder:
         self._engine = engine
         self._observer = observer or StreamObserver()
 
-    def buildSteps(self):
-        return [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
 
-    def build(self, step_list=[]):
+    def get_steps(self, refs: list = None):
+        steps = [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
+        if refs:
+            name_dict = {step.name: step for step in steps}
+            step_list = [int(ref) if ref.isdigit() else ref for ref in refs]
+            try:
+                steps = [steps[ref] if isinstance(ref, int) else name_dict[ref] for ref in step_list]
+            except KeyError as e:
+                raise ValueError("No step named " + str(e))
+            except IndexError as e:
+                raise ValueError("A step index was too big. Remember, indexing begins with 0.")
+        return steps
+
+    def build(self, step_refs: list = None):
         backend = self._engine.backend
         observer = self._observer
-        steps = self.buildSteps()
-        if (step_list):
-            name_dict = {step.name: step for step in steps}
-            steps = [name_dict[step] if step in name_dict.keys() else steps[int(step)] for step in step_list]
+        steps = self.get_steps(step_refs)
         task = BuildTask(self.path, steps)
         observer.enter_prepare()
         backend.prepare(task, observer)
