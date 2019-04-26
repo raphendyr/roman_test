@@ -2,6 +2,7 @@ from os import environ, getuid, getegid
 from os.path import isdir, join
 
 from apluslms_yamlidator.utils.decorator import cached_property
+from apluslms_yamlidator.utils.collections import OrderedDict
 
 from .backends import BACKENDS, BuildTask, BuildStep, Environment
 from .observer import StreamObserver
@@ -29,7 +30,7 @@ class Builder:
                 raise ValueError("No step named " + str(e))
             except IndexError as e:
                 raise ValueError("A step index was too big. Remember, indexing begins with 0.")
-        return steps
+        return list(OrderedDict.fromkeys(steps))
 
     def build(self, step_refs: list = None):
         backend = self._engine.backend
