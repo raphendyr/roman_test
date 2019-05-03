@@ -231,6 +231,9 @@ def add_cli_actions(parser):
         help=_("location of the course definition (default: current working dir)"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
+    build.add_argument('-ls', '--list-steps',
+        action='store_true',
+        help=_("list all available steps and exit"))
 
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
