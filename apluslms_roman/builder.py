@@ -7,12 +7,12 @@ from apluslms_yamlidator.utils.collections import OrderedDict
 from .backends import BACKENDS, BuildTask, BuildStep, Environment
 from .observer import StreamObserver
 from .utils.importing import import_string
-
+from .utils.translation import _
 
 class Builder:
     def __init__(self, engine, config, observer=None):
         if not isdir(config.dir):
-            raise ValueError("config.dir isn't a directory.")
+            raise ValueError(_("config.dir isn't a directory."))
         self.config = config
         self.path = config.dir
         self._engine = engine
@@ -27,9 +27,9 @@ class Builder:
             try:
                 steps = [steps[ref] if isinstance(ref, int) else name_dict[ref] for ref in step_list]
             except KeyError as e:
-                raise ValueError("No step named " + str(e))
+                raise ValueError(_("No step named {}").format(e))
             except IndexError as e:
-                raise ValueError("A step index was too big. Remember, indexing begins with 0.")
+                raise ValueError(_("A step index was too big. Remember, indexing begins with 0."))
         return list(OrderedDict.fromkeys(steps))
 
     def build(self, step_refs: list = None):
