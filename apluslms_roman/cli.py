@@ -229,7 +229,7 @@ def add_cli_actions(parser):
         help=_("build the course (default action)"))
     build.add_argument('course', nargs='?',
         help=_("location of the course definition (default: current working dir)"))
-    build.add_argument('--buildsteps', nargs='+',
+    build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
 
     # build is the default callback. set defaults for it
@@ -341,7 +341,7 @@ def build_action(context):
 
     builder = engine.create_builder(config)
 
-    if (context.parser.parse_args().steps):
+    if context.args.list_steps or (context.args.steps and context.args.steps[0] == '?'):
         steps = builder.get_steps()
         num_len = len(str(len(steps)))
         name_len = len(max(steps, key=lambda s: len(s.name or "")).name)
@@ -354,7 +354,7 @@ def build_action(context):
         return 1
 
     # build course
-    result = builder.build(context.parser.parse_args().buildsteps)
+    result = builder.build(context.args.steps)
     print(result)
     return result.code
 
