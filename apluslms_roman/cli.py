@@ -4,8 +4,8 @@ from collections import namedtuple
 from functools import partial
 from glob import glob
 from itertools import chain
-from os import getcwd
-from os.path import abspath, expanduser, expandvars
+from os import chdir, getcwd
+from os.path import abspath, expanduser, expandvars, join as path_join
 from sys import exit as _exit, stderr, stdout
 
 from apluslms_yamlidator.document import Document
@@ -156,11 +156,21 @@ def create_parser(version=__version__,
         version="%%(prog)s %s" % (version,),
         help=_("print a version info and exit"))
 
-    # setting file support
+    # global roman settings (user settings)
     parser.add_argument('-c', '--config',
-        metavar=_('PATH'),
-        default=None,
-        help=_("load settings from a file"))
+        metavar=_('FILE'),
+        help=_("use FILE as the global roman settings"))
+
+    # project location and project settings
+    parser.add_argument('-C', '--directory',
+        metavar=_('DIR'),
+        default=[],
+        action='append',
+        help=_("Change to directory DIR before reading the configuration file or doing anything else. If specified multiple times, then values are joined with `os.path.join`."))
+    parser.add_argument('-f', '--file',
+        dest='project_config',
+        metavar=_('FILE'),
+        help=_("use the FILE as the project configuration file"))
 
     RomanSettings.populate_parser(parser)
 
@@ -176,6 +186,11 @@ def parse_actioncontext(parser):
         args.debug = True
         args.verbose = max_level
     logging.getLogger().setLevel(LOG_LEVELS[args.verbose])
+
+    # set working directory
+    if args.directory:
+        dirs = [expanduser(expandvars(d)) for d in args.directory]
+        chdir(path_join(*dirs))
 
     # load settings
     allow_missing = args.config is None
@@ -208,10 +223,8 @@ def add_cli_actions(parser):
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
         help=_("build the course (default action)"))
-    build.add_argument('course', nargs='?',
-        help=_("location of the course definition (default: current working dir)"))
 
-    # build is the default callback. set defaults for it (e.g. course to None)
+    # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
     parser.set_callback(build_action)
 
@@ -284,15 +297,11 @@ def get_engine(context):
 
 
 def get_config(context):
-    course = context.args.course
-    dir_ = (
-        getcwd() # default is current working directory
-        if course is None else
-        abspath(expanduser(expandvars(course))) # expand env and home
-    )
-
     try:
-        return CourseConfig.find_from(dir_)
+        if context.args.project_config:
+            project_config = abspath(expanduser(expandvars(context.args.project_config)))
+            return CourseConfig.load_from(project_config)
+        return CourseConfig.find_from(getcwd())
     except CourseConfigError as e:
         exit(1, _("Invalid course configuration: {}").format(e))
 
