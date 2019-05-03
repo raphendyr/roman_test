@@ -144,6 +144,10 @@ def create_parser(version=__version__,
     parser = CallbackArgumentParser(**kwargs)
 
     # basic options
+    parser.add_argument('-V', '--version',
+        action='version',
+        version="%%(prog)s %s" % (version,),
+        help=_("print a version info and exit"))
     parser.add_argument('-v', '--verbose',
         action='count',
         default=0,
@@ -151,10 +155,6 @@ def create_parser(version=__version__,
     parser.add_argument('--debug',
         action='store_true',
         help=_("show all logged messages"))
-    parser.add_argument('-V', '--version',
-        action='version',
-        version="%%(prog)s %s" % (version,),
-        help=_("print a version info and exit"))
 
     # global roman settings (user settings)
     parser.add_argument('-c', '--config',
