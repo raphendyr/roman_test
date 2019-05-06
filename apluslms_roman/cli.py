@@ -155,7 +155,7 @@ def create_parser(version=__version__,
     parser.add_argument('--debug',
         action='store_true',
         help=_("show all logged messages"))
-    parser.add_argument('-s', '--steps',
+    parser.add_argument('-l', '--list-steps',
         action='store_true',
         help=_("list all available steps and exit"))
     # setting file support
@@ -231,7 +231,7 @@ def add_cli_actions(parser):
         help=_("location of the course definition (default: current working dir)"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
-    build.add_argument('-ls', '--list-steps',
+    build.add_argument('-l', '--list-steps',
         action='store_true',
         help=_("list all available steps and exit"))
 
@@ -357,7 +357,11 @@ def build_action(context):
         return 1
 
     # build course
-    result = builder.build(context.args.steps)
+    steps = context.args.steps
+    if steps and ',' in context.args.steps[0]:
+        steps = steps[0].split(',')
+
+    result = builder.build(steps)
     print(result)
     return result.code
 
