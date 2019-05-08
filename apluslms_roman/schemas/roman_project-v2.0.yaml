@@ -21,6 +21,8 @@ definitions:
         type: object
       name:
         type: string
+        # doesn't allow names that are only numerals
+        pattern: "[^0-9]+"
         description: name of the step
 
 

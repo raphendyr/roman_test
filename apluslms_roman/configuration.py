@@ -35,6 +35,7 @@ class ProjectConfig(Document):
     name = 'roman_project'
     schema = name
     version = Version(2, 0)
+    _version_key = "version"
 
     @classmethod
     def find_from(cls, path):
@@ -66,4 +67,8 @@ class ProjectConfig(Document):
 
     @property
     def steps(self):
-        return self.get('steps') or []
+        return self.setdefault('steps', [])
+
+    @property
+    def steps_by_name(self):
+        return {s['name'].lower(): s for s in self.steps if 'name' in s}

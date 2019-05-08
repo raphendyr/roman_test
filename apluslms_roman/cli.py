@@ -9,6 +9,7 @@ from os.path import abspath, expanduser, expandvars, join as path_join
 from sys import exit as _exit, stderr, stdout
 
 from apluslms_yamlidator.document import Document
+from apluslms_yamlidator.utils.collections import OrderedDict
 from apluslms_yamlidator.utils.yaml import rt_dump as yaml_dump
 from apluslms_yamlidator.validator import ValidationError, render_error
 
@@ -251,6 +252,28 @@ def add_cli_actions(parser):
         config.add_parser('print', aliases=['p'],
             callback=config_print_action,
             help=_("print configurations (default action)"))
+        setval = config.add_parser('set', aliases=['s'],
+            callback=config_set_action,
+            help=_("change/add values in the configuration"))
+        setval.add_argument('values', nargs='+', help=_("format: key=val"))
+        delval = config.add_parser('remove', aliases=['r'],
+            callback=config_del_action,
+            help=_("remove values from the configuration"))
+        delval.add_argument('keys', nargs='+')
+        step_add = config.add_parser('add-step', aliases=['a'],
+            callback=step_add_action,
+            help=_("add step to roman.yml"))
+        step_add.add_argument('img')
+        step_add.add_argument('-n', '--name')
+        step_add.add_argument('-e', '--env', nargs='+', help=_("format: key=val"))
+        step_add.add_argument('-c', '--cmd')
+        step_add.add_argument('-m', '--mnt')
+        step_del = config.add_parser('del-step', aliases=['d'],
+            callback=step_del_action,
+            help=_("delete step from roman.yml."))
+        step_del.add_argument('ref', help=_("ref can be either step index or name"))
+        step_del.add_argument('-f', '--force', action='store_true',
+            help=_("delete step without confirmation"))
 
     validate = parser.add_parser('validate',
         help=_("validatation actions for debuging"))
@@ -379,6 +402,91 @@ def config_print_action(context):
     if all_ or context.args.project:
         print("---\n# project config")
         yaml_dump(get_config(context)._data, stdout)
+
+
+def config_set_action(context):
+    if context.args.user == context.args.project:
+        raise Exception("Choose either user settings or project settings")
+    document = context.settings if context.args.user else context.config
+
+    schema = document.validator.schema
+    for val in context.args.values:
+        try:
+            key, val = val.split('=', 1)
+            document.mlset_cast(key, val)
+        except ValueError as err:
+            if hasattr(err, 'value_type'):
+                exit(1, _("{} should be of type '{}', but was '{}'.").format(
+                    key, err.value_type, type(val).__name__))
+            else:
+                exit(1, _("Give values in format 'key=val'."))
+
+    document.validate()
+    document.save()
+
+def config_del_action(context):
+    if context.args.user == context.args.project:
+        raise Exception("Choose either user settings or project settings")
+    document = context.settings if context.args.user else context.config
+    for val in context.args.keys:
+        document.mldel(val)
+    document.validate()
+
+def step_add_action(context):
+    args = context.args
+    env = args.env
+    if env:
+        try:
+            env = OrderedDict(s.split('=', 1) for s in env)
+        except ValueError:
+            exit(1, "env is a dict, so values need to be in key=val format, e.g. a=1 b=2")
+    step = {
+        "img": args.img,
+        "cmd": args.cmd,
+        "mnt": args.mnt,
+        "env": env,
+        "name": args.name
+    }
+    step = {k: v for k, v in step.items() if v}
+    config = get_config(context)
+    try:
+        config.add_step(step)
+    except ValueError as err:
+        exit(1, str(err))
+    try:
+        config.validate()
+    except ValidationError as err:
+        exit(1, '\n'.join(render_error(err)))
+    config.save()
+    print("Step successfully added to config.")
+
+def step_del_action(context):
+    def confirm_del(step):
+        print("step:")
+        print('  {}'.format(yaml_dump(step.get_data()).replace('\n', '\n  ')))
+        while True:
+            i = input("Delete this step? (y/n) ").lower()
+            if i == "y":
+                return True
+            if i == "n":
+                return False
+
+    ref = context.args.ref.lower()
+    config = get_config(context)
+    try:
+        step = config.get_step(ref)
+    except IndexError:
+        exit(1, _(
+            "Index is out of range. Remember, indexing start from 0. "
+            "Use 'roman --list-steps' to see step indexes."))
+    except KeyError:
+        exit(1, _("There is no step called '{}'").format(ref))
+    if not context.args.force and not confirm_del(step):
+        return
+    config.del_step(ref)
+    config.validate()
+    config.save()
+    print("Step successfully removed from config.")
 
 
 def validate_schema_action(context):

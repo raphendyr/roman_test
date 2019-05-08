@@ -2,9 +2,11 @@ import logging
 from abc import ABCMeta
 from copy import deepcopy
 from hashlib import sha1
+from itertools import chain, zip_longest
 from os import makedirs
 from os.path import dirname, exists
 
+from .utils import convert_to_boolean as to_bool
 from .utils.collections import Changes, MutableMapping, Sequence
 from .utils.functional import attrproxy
 from .utils.version import parse_version
@@ -140,7 +142,7 @@ class Versioned:
         hash_ = hash(content)
         if hash_ != self._hash:
             if self._dir and not exists(self._dir):
-                logger.debug("Creating path: %s", self_dir)
+                logger.debug("Creating path: %s", self._dir)
                 makedirs(self._dir)
             with open(self.path, 'w') as f:
                 f.write(content)
@@ -199,7 +201,7 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         try:
             document = container.get_latest(max_version=version)
         except KeyError:
-            document = cls(container, None, Dict(), version)
+            document = cls(container, None, Dict(version=str(cls.version)), version)
         if version is not None and document.version < version:
             document = document.upgrade(version)
         return document
@@ -338,6 +340,42 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         container, key = find_ml(self._data, keys, create_dicts=True)
         container[key] = value
 
+    def mlset_cast(self, keys, value):
+
+        if isinstance(keys, str):
+            key_list = keys.split(".")
+        elif not isinstance(keys, list):
+            key_list = list(keys)
+
+        schema_keys = list(chain.from_iterable(zip_longest((), key_list, fillvalue='properties')))
+
+        container, key = find_ml(self.validator.schema, schema_keys)
+
+        if key in container:
+            container = container[key]
+            if "type" in container:
+                val_type = container["type"]
+
+        if val_type:
+            if val_type == "boolean":
+                try:
+                    value = to_bool(value)
+                except ValueError as err:
+                    err.value_type = val_type
+                    raise err
+            elif val_type == "integer":
+                try:
+                    value = int(value)
+                except ValueError as err:
+                    err.value_type = val_type
+                    raise err
+            elif val_type == "string" and not isinstance(value, str):
+                err = ValueError()
+                err.value_type = val_type
+                raise err
+
+        self.mlset(keys, value)
+
     def mlsetwork(self, keys, value):
         container, key = find_ml(self._data, keys, create_dicts=True)
         return container.setwork(key, value)
@@ -345,3 +383,7 @@ class Document(MutableMapping, metaclass=DocumentMeta):
     def mlsetdefault(self, keys, value):
         container, key = find_ml(self._data, keys, create_dicts=True)
         return container.setdefault(key, value)
+
+    def mldel(self, keys):
+        container, key = find_ml(self._data, keys)
+        del container[key]
