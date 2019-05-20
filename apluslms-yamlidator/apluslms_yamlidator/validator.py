@@ -165,32 +165,47 @@ class Validator:
             logger.debug("%s: %s", key, f.cache_info())
 
 
+def format_path(path):
+    if not path:
+        return ""
+    if not isinstance(path, list):
+        path = list(path)
+    return path[0] + "".join([".%s" % p if isinstance(p, str) else "[%d]" % p for p in path[1:]])
+
+
 def render_error(error, num_lines=5):
     out = []
-    id_ = error.schema_id
-    source, line, col = error.source
+    if hasattr(error, 'source'):
+        source, line, col = error.source
+        with open(source) as f:
+            lines = f.read().splitlines()
+        out.append("File '%s':" % (source,))
+        ident = len(str(line))
+        fmt = "%%%dd: %%s" % (ident,)
+        start = max(line - num_lines, 0)
+        for i, l in enumerate(lines[start:line+1], start):
+            out.append(fmt % (i, l))
+        out.append("%s^" % (" "*(col+ident+2),))
 
-    with open(source) as f:
-        lines = f.read().splitlines()
-    out.append("File '%s':" % (source,))
-    ident = len(str(line))
-    fmt = "%%%dd: %%s" % (ident,)
-    start = max(line - num_lines, 0)
-    for i, l in enumerate(lines[start:line+1], start):
-        out.append(fmt % (i, l))
-    out.append("%s^" % (" "*(col+ident+2),))
-    out.append("%20s: %s" % ("validator", error.validator))
-    for k, v in error.schema.items():
-        if k[0] == '$':
-            continue
-        if isinstance(v, list):
-            v = [x for x in v if not isinstance(x, (dict, list))]
-            if not v:
+    context = error.context
+    if context:
+        out.append("There were several errors:")
+        for e in context:
+            out.append("\nError at %s:" % format_path(error.path + e.path))
+            out.append("  %s: %s" % (type(e).__name__, e.message))
+    else:
+        out.append("\n%20s: %s" % ("validator", error.validator))
+        for k, v in error.schema.items():
+            if k[0] == '$':
                 continue
-        elif isinstance(v, dict):
-            v = list(v.keys())
-        out.append("%20s: %s" % (k, v))
-    out.append("%s: %s" % (type(error).__name__, error.message))
+            if isinstance(v, list):
+                v = [x for x in v if not isinstance(x, (dict, list))]
+                if not v:
+                    continue
+            elif isinstance(v, dict):
+                v = list(v.keys())
+            out.append("%20s: %s" % (k, v))
+    out.append("\n%s: %s" % (type(error).__name__, error.message))
     return out
 
 

@@ -11,7 +11,8 @@ from .utils import convert_to_boolean as to_bool
 from .utils.collections import Changes, MutableMapping, Sequence, recursive_update
 from .utils.functional import attrproxy
 from .utils.version import parse_version
-from .utils.yaml import Dict, rt_dump_all as dump_all, rt_load_all as load_all
+from .utils.yaml import Dict, rt_dump as dump, rt_dump_all as dump_all, rt_load_all as load_all
+from .utils.translation import _
 from .validator import ValidationError, Validator
 
 
@@ -267,18 +268,41 @@ class Document(MutableMapping, metaclass=DocumentMeta):
                 validator.validate(self._data)
             except ValidationError as err:
                 err.schema_id = id_ = validator.ID_OF(validator.schema)
-                parent = err.parent.instance if err.parent is not None else self._data
-                if err.path:
-                    dict_, key = find_ml(parent, err.path)
-                    if hasattr(dict_, '_data'):
-                        dict_ = dict_._data
-                    ln, cn = dict_.lc.value(key)
-                else:
-                    lc = parent._data.lc
-                    ln, cn = lc.line, lc.col
-                err.source = (self._container.path, ln, cn)
                 if not quiet:
-                    logger.error("A document '%s' does not validate against schema %s", self._container.path, id_)
+                    logger.error(
+                        _("A document '%s' does not validate against schema %s"),
+                        self._container.path, id_
+                    )
+                parent = err.parent.instance if err.parent is not None else self._data
+                indexes = [part for part in err.path if isinstance(part, int)]
+                if err.path:
+                    # check if path contains lists (lc doesn't work for lists)
+                    if indexes:
+                        index = indexes[0]
+                        split_point = err.path.index(index)
+                        path = list(err.path)[:split_point]
+                        dict_, key = find_ml(parent, path)
+                        if hasattr(dict_, '_data'):
+                            dict_ = dict_._data
+                        dict_ = dict_[key][index]
+                        if not quiet:
+                            print(_("\nError in list '{}', at index {}:").format(
+                                ".".join(path), index))
+                            print("%s[%d]:" % (path[-1], index))
+                            print("  " + dump(dict_).replace("\n", "\n  "))
+                    else:
+                        dict_, key = find_ml(parent, err.path)
+                        if hasattr(dict_, '_data'):
+                            dict_ = dict_._data
+                        try:
+                            line, column = dict_.lc.value(key)
+                            err.source = (self._container.path, line, column)
+                        # if the document wasn't read from a file, it won't have lc
+                        except Exception:
+                            if not quiet:
+                                print(_("\nError caused by {}, which had the value {}\n").format(
+                                    ".".join(err.path), dict_[key]))
+
                 raise err
 
     def upgrade(self, version):
@@ -319,6 +343,22 @@ class Document(MutableMapping, metaclass=DocumentMeta):
             self.version,
             self._data,
         )
+
+    def find_type(self, keys):
+        if isinstance(keys, str):
+            key_list = keys.split(".")
+        elif not isinstance(keys, list):
+            key_list = list(keys)
+
+        schema_keys = list(chain.from_iterable(zip_longest((), key_list, fillvalue='properties')))
+
+        container, key = find_ml(self.validator.schema, schema_keys)
+
+        if key in container:
+            container = container[key]
+            if "type" in container:
+                return container["type"]
+        return None
 
     # MutableMapping
 
@@ -368,20 +408,7 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         container[key] = value
 
     def mlset_cast(self, keys, value):
-
-        if isinstance(keys, str):
-            key_list = keys.split(".")
-        elif not isinstance(keys, list):
-            key_list = list(keys)
-
-        schema_keys = list(chain.from_iterable(zip_longest((), key_list, fillvalue='properties')))
-
-        container, key = find_ml(self.validator.schema, schema_keys)
-
-        if key in container:
-            container = container[key]
-            if "type" in container:
-                val_type = container["type"]
+        val_type = self.find_type(keys)
 
         if val_type:
             if val_type == "boolean":
