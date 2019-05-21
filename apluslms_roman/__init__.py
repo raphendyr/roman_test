@@ -9,7 +9,7 @@ CONFIG_DIR = appdirs.user_config_dir(appname=__app_id__, appauthor=__author__)
 CACHE_DIR = appdirs.user_cache_dir(appname=__app_id__, appauthor=__author__)
 del appdirs
 
-from .configuration import CourseConfig
+from .configuration import ProjectConfig
 from .builder import Builder, Engine
 
 from . import schemas # register our schemas

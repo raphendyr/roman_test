@@ -1,3 +1,4 @@
+from itertools import chain
 from os import listdir
 from os.path import join, isdir, isfile
 
@@ -7,8 +8,9 @@ from apluslms_yamlidator.utils.version import Version
 
 from .utils.translation import _
 
-DEFAULT_NAME = 'course'
+DEFAULT_NAMES = ('roman', 'course')
 DEFAULT_PREFIXES = ('yml', 'yaml', 'json')
+DEFAULT_NAME = '%s.%s' % (DEFAULT_NAMES[0], DEFAULT_PREFIXES[0])
 
 LEGACY_SOURCE = '<legacy a-plus-rst-tools support>'
 LEGACY_CONFIG = OrderedDict((
@@ -22,30 +24,30 @@ LEGACY_CONFIG = OrderedDict((
     ),),)),
 ))
 
-class CourseConfigError(Exception):
+class ProjectConfigError(Exception):
     pass
 
 def is_legacy_configuration(path):
     """Checks if path is legacy a-plus-rst-tools course"""
     return isfile(join(path, 'conf.py')) and isfile(join(path, 'Makefile'))
 
-class CourseConfig(Document):
-    name = 'course_config'
+class ProjectConfig(Document):
+    name = 'roman_project'
     schema = name
     version = Version(2, 0)
 
     @classmethod
-    def find_from(cls, path, name=None, prefixes=None):
-        if not name:
-            name = DEFAULT_NAME
-        if not prefixes:
-            prefixes = DEFAULT_PREFIXES
+    def find_from(cls, path):
 
-        files = ['%s.%s' % (name, prefix) for prefix in prefixes]
+        files = [
+            ['%s.%s' % (name, prefix) for prefix in DEFAULT_PREFIXES]
+            for name in DEFAULT_NAMES
+        ]
+        files = list(chain.from_iterable(files))
         files_s = frozenset(files)
 
         if not isdir(path):
-            raise CourseConfigError(
+            raise ProjectConfigError(
                 "Path {} doesn't exists or is not a directory".format(path)
             )
 
@@ -56,15 +58,11 @@ class CourseConfig(Document):
                     break
         else:
             if is_legacy_configuration(path):
-                container = cls.Container(config, allow_missing=True)
+                container = cls.Container(join(path, DEFAULT_NAME), allow_missing=True)
                 return cls(container, None, LEGACY_CONFIG, cls.version)
-            raise CourseConfigError("Couldn't find course configuration from {}. Expected to find one of these: {}".format(path, ', '.join(files)))
+            raise ProjectConfigError("Couldn't find project configuration from {}. Expected to find one of these: {}".format(path, ', '.join(files)))
 
         return cls.load(config)
-
-    @property
-    def dir(self):
-        return self._container._dir
 
     @property
     def steps(self):

@@ -112,7 +112,7 @@ class ArgumentSettings(Settings, metaclass=ArgumentSettingsMeta):
                     set_(option, value)
 
 
-class RomanSettings(ArgumentSettings):
+class GlobalSettings(ArgumentSettings):
     name = 'roman_settings'
     schema = name
     version = Version(1, 0)

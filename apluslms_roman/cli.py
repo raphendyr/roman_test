@@ -14,8 +14,8 @@ from apluslms_yamlidator.validator import ValidationError, render_error
 
 from . import __version__
 from .builder import Engine
-from .configuration import CourseConfigError, CourseConfig
-from .settings import RomanSettings
+from .configuration import ProjectConfig, ProjectConfigError
+from .settings import GlobalSettings
 from .utils.translation import _
 
 
@@ -141,7 +141,7 @@ def configure_logging():
 def create_parser(version=__version__,
                   **kwargs):
     # the parser
-    kwargs.setdefault('description', _("A course material builder"))
+    kwargs.setdefault('description', _("A project material builder"))
     #parser = argparse.ArgumentParser(**kwargs)
     parser = CallbackArgumentParser(**kwargs)
 
@@ -175,7 +175,7 @@ def create_parser(version=__version__,
         metavar=_('FILE'),
         help=_("use the FILE as the project configuration file"))
 
-    RomanSettings.populate_parser(parser)
+    GlobalSettings.populate_parser(parser)
 
     return parser
 
@@ -197,12 +197,12 @@ def parse_actioncontext(parser):
 
     # load settings
     allow_missing = args.config is None
-    config = args.config if args.config is not None else RomanSettings.get_config_path()
+    config = args.config if args.config is not None else GlobalSettings.get_config_path()
 
     logger.debug(_("Loading settings from '%s'"), config)
 
     try:
-        settings = RomanSettings.load(config, allow_missing=allow_missing)
+        settings = GlobalSettings.load(config, allow_missing=allow_missing)
     except ValidationError as e:
         exit(1, '\n'.join(render_error(e)))
     except IOError as e:
@@ -229,7 +229,7 @@ def add_cli_actions(parser):
 
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
-        help=_("build the course (default action)"))
+        help=_("build the project (default action)"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
     build.add_argument('-l', '--list-steps',
@@ -312,10 +312,10 @@ def get_config(context):
     try:
         if context.args.project_config:
             project_config = abspath(expanduser(expandvars(context.args.project_config)))
-            return CourseConfig.load_from(project_config)
-        return CourseConfig.find_from(getcwd())
-    except CourseConfigError as e:
-        exit(1, _("Invalid course configuration: {}").format(e))
+            return ProjectConfig.load_from(project_config)
+        return ProjectConfig.find_from(getcwd())
+    except ProjectConfigError as e:
+        exit(1, _("Invalid project configuration: {}").format(e))
 
 
 def verify_engine(engine, only_when_error=False):
@@ -358,7 +358,7 @@ def build_action(context):
     if not verify_engine(engine, only_when_error=True):
         return 1
 
-    # build course
+    # build project
     steps = context.args.steps
     if steps:
         steps = chain.from_iterable(step.split(',') for step in steps)

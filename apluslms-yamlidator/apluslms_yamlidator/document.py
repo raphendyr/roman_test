@@ -219,6 +219,10 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         return self._index
 
     @property
+    def dir(self):
+        return self._container._dir
+
+    @property
     def path(self):
         return self._container.path
 
