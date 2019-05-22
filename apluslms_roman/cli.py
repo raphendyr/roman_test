@@ -155,9 +155,6 @@ def create_parser(version=__version__,
     parser.add_argument('--debug',
         action='store_true',
         help=_("show all logged messages"))
-    parser.add_argument('-l', '--list-steps',
-        action='store_true',
-        help=_("list all available steps and exit"))
     # setting file support
 
     # global roman settings (user settings)
@@ -210,6 +207,10 @@ def parse_actioncontext(parser):
         exit(1, str(e))
 
     settings.update_from_namespace(args)
+
+    # post process rest of the args
+    if args.steps and any(step == '?' for step in args.steps):
+        args.list_steps = True
 
     return ActionContext(parser, args, settings, parser.get_callback(args))
 
@@ -341,26 +342,24 @@ def verify_engine(engine, only_when_error=False):
 def build_action(context):
     config = get_config(context)
     engine = get_engine(context)
-
     builder = engine.create_builder(config)
 
-    if context.args.list_steps or (context.args.steps and context.args.steps[0] == '?'):
+    if context.args.list_steps:
         steps = builder.get_steps()
-        num_len = len(str(len(steps)))
-        name_len = len(max(steps, key=lambda s: len(s.name or "")).name)
-        step_str = "{:%dd}. {:%ds} {}" % (num_len, name_len)
+        num_len = max(2, len(str(len(steps)-1)))
+        name_len = max(4, len(max(step.name or "" for step in steps)))
+        header_fmt = "{:>%ds}  {:%ds} {}" % (num_len, name_len)
+        step_fmt = "{:%dd}. {:%ds} {}" % (num_len, name_len)
+        print(header_fmt.format('ID', 'NAME', 'IAMGE'))
         for step in steps:
-            print(step_str.format(step.ref, step.name or "", step.img))
+            print(step_fmt.format(step.ref, step.name or "", step.img))
         return
 
     if not verify_engine(engine, only_when_error=True):
         return 1
 
     # build course
-    steps = context.args.steps
-    if steps and ',' in context.args.steps[0]:
-        steps = steps[0].split(',')
-
+    steps = chain.from_iterable(step.split(',') for step in context.args.steps)
     result = builder.build(steps)
     print(result)
     return result.code
