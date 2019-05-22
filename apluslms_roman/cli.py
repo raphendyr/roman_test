@@ -228,8 +228,6 @@ def add_cli_actions(parser):
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
         help=_("build the course (default action)"))
-    build.add_argument('course', nargs='?',
-        help=_("location of the course definition (default: current working dir)"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
     build.add_argument('-l', '--list-steps',
