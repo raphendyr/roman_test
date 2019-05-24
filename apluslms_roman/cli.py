@@ -357,7 +357,9 @@ def build_action(context):
         return 1
 
     # build course
-    steps = chain.from_iterable(step.split(',') for step in context.args.steps)
+    steps = context.args.steps
+    if steps:
+        steps = chain.from_iterable(step.split(',') for step in steps)
     result = builder.build(steps)
     print(result)
     return result.code
