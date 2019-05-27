@@ -1,5 +1,5 @@
 from os import environ, getuid, getegid
-from os.path import isdir, join
+from os.path import isdir
 
 from apluslms_yamlidator.utils.decorator import cached_property
 from apluslms_yamlidator.utils.collections import OrderedDict
@@ -20,27 +20,26 @@ class Builder:
 
 
     def get_steps(self, refs: list = None):
-        steps = [BuildStep.from_config(i, step) for i, step in enumerate(self.config.steps)]
         if refs:
-            name_dict = {step.name: step for step in steps}
-            step_list = [int(ref) if ref.isdigit() else ref for ref in refs]
-            try:
-                steps = [steps[ref] if isinstance(ref, int) else name_dict[ref] for ref in step_list]
-            except KeyError as e:
-                raise ValueError(_("No step named {}").format(e))
-            except IndexError as e:
-                raise ValueError(_("A step index was too big. Remember, indexing begins with 0."))
+            # NOTE: may raise KeyError or IndexError
+            steps = [self.config.get_step(ref) for ref in refs]
+        else:
+            steps = self.config.steps
+        steps = [BuildStep.from_config(i, step) for i, step in enumerate(steps)]
         return list(OrderedDict.fromkeys(steps))
 
     def build(self, step_refs: list = None):
         backend = self._engine.backend
         observer = self._observer
-        steps = self.get_steps(step_refs)
+        steps = self.get_steps(step_refs) # NOTE: may raise KeyError or IndexError
+
         task = BuildTask(self.path, steps)
         observer.enter_prepare()
         backend.prepare(task, observer)
+
         observer.enter_build()
         result = backend.build(task, observer)
+
         observer.done(data=result)
         return result
 

@@ -1,48 +1,31 @@
 from itertools import chain
 from os import listdir
-from os.path import join, isdir, isfile
+from os.path import basename, join, isdir, isfile
 
 from apluslms_yamlidator.document import Document
-from apluslms_yamlidator.utils.collections import OrderedDict
 from apluslms_yamlidator.utils.version import Version
 
 from .utils.translation import _
 
-DEFAULT_NAMES = ('roman', 'course')
-DEFAULT_PREFIXES = ('yml', 'yaml', 'json')
-DEFAULT_NAME = '%s.%s' % (DEFAULT_NAMES[0], DEFAULT_PREFIXES[0])
-
-LEGACY_SOURCE = '<legacy a-plus-rst-tools support>'
-LEGACY_CONFIG = OrderedDict((
-    ('version', 2),
-    ('theme', 'aplus'),
-    ('steps', (OrderedDict((
-        ('img', 'apluslms/compile-rst'),
-        ('cmd', ('make', 'touchrst', 'html')),
-        ('mnt', '/compile'),
-        ('env', {'STATIC_CONTENT_HOST': "http://localhost:8080/static/default"}),
-    ),),)),
-))
 
 class ProjectConfigError(Exception):
     pass
 
-def is_legacy_configuration(path):
-    """Checks if path is legacy a-plus-rst-tools course"""
-    return isfile(join(path, 'conf.py')) and isfile(join(path, 'Makefile'))
 
 class ProjectConfig(Document):
     name = 'roman_project'
     schema = name
     version = Version(2, 0)
-    _version_key = "version"
+    DEFAULT_NAMES = ('roman', 'course')
+    DEFAULT_PREFIXES = ('yml', 'yaml', 'json')
+    DEFAULT_FILENAME = '%s.%s' % (DEFAULT_NAMES[0], DEFAULT_PREFIXES[0])
 
     @classmethod
     def find_from(cls, path):
 
         files = [
-            ['%s.%s' % (name, prefix) for prefix in DEFAULT_PREFIXES]
-            for name in DEFAULT_NAMES
+            ['%s.%s' % (name, prefix) for prefix in cls.DEFAULT_PREFIXES]
+            for name in cls.DEFAULT_NAMES
         ]
         files = list(chain.from_iterable(files))
         files_s = frozenset(files)
@@ -58,12 +41,42 @@ class ProjectConfig(Document):
                 if isfile(config):
                     break
         else:
-            if is_legacy_configuration(path):
-                container = cls.Container(join(path, DEFAULT_NAME), allow_missing=True)
-                return cls(container, None, LEGACY_CONFIG, cls.version)
-            raise ProjectConfigError("Couldn't find project configuration from {}. Expected to find one of these: {}".format(path, ', '.join(files)))
+            raise FileNotFoundError((
+                _("Couldn't find project configuration from {}.\nExpected to find one of these: {}")
+            ).format(path, ', '.join(files)))
 
         return cls.load(config)
+
+    @classmethod
+    def load_from(cls, config):
+        if isfile(config):
+            return cls.load(config)
+        if '.' not in basename(config):
+            for prefix in cls.DEFAULT_PREFIXES:
+                filename = '%s.%s' % (config, prefix)
+                if isfile(filename):
+                    return cls.load(filename)
+        raise FileNotFoundError("Given file '{}' doesn't exist.".format(config))
+
+    def add_step(self, step):
+        if 'name' in step:
+            if step['name'].lower() in self.steps_by_name:
+                raise ValueError("A step with the name '%s' already exists." % step['name'])
+        self.steps.append(step)
+
+    def del_step(self, step_ref):
+        step = self.get_step(step_ref)
+        self.steps.remove(step)
+
+    def get_step(self, step_ref):
+        if step_ref.isdigit():
+            try:
+                idx = int(step_ref)
+                return self.steps[idx]
+            except IndexError as err:
+                # IndexError doesn't include the index by default
+                raise IndexError(idx) from err
+        return self.steps_by_name[step_ref.lower()]
 
     @property
     def steps(self):

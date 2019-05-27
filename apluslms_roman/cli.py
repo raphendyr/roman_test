@@ -33,6 +33,10 @@ def exit(status=None, message=None):
     _exit(status or 0)
 
 
+def warning(message):
+    print(_("WARNING: %s") % (message,), file=stderr)
+
+
 _ActionContext = namedtuple('ActionContext', ('parser', 'args', 'settings', 'action'))
 class ActionContext(_ActionContext):
     @property
@@ -197,17 +201,19 @@ def parse_actioncontext(parser):
         chdir(path_join(*dirs))
 
     # load settings
-    allow_missing = args.config is None
     config = args.config if args.config is not None else GlobalSettings.get_config_path()
 
     logger.debug(_("Loading settings from '%s'"), config)
 
     try:
-        settings = GlobalSettings.load(config, allow_missing=allow_missing)
+        settings = GlobalSettings.load(config, allow_missing=True)
     except ValidationError as e:
         exit(1, '\n'.join(render_error(e)))
-    except IOError as e:
+    except OSError as e:
         exit(1, str(e))
+
+    if args.config is not None and not settings.container.exists():
+        warning(_("File {} doesn't exist.").format(args.config))
 
     settings.update_from_namespace(args)
 
@@ -240,6 +246,10 @@ def add_cli_actions(parser):
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
     parser.set_callback(build_action)
+
+    parser.add_parser('init',
+        callback=init_action,
+        help=("create roman settings file in current directory"))
 
     config = parser.add_parser('config', aliases=['c'],
         callback=config_print_action,
@@ -287,7 +297,7 @@ def add_cli_actions(parser):
         validate_schema.add_argument('schema_name', metavar='schema',
             help=_("the name of a schema for validation"))
         validate_schema.add_argument('data_files', metavar='file', nargs='+',
-            help=_("an YAML/JSON file(s) to be validated"))
+            help=_("a YAML/JSON file(s) to be validated"))
 
     backend = parser.add_parser('backend',
         help=_("backend actions for debuging"))
@@ -315,7 +325,6 @@ def main():
     context = parse_actioncontext(parser)
 
     logger.debug(_("Executing action %s"), context.action_name)
-    context.settings.save() # FIXME: testing
     exit(context.run())
 
 
@@ -336,9 +345,25 @@ def get_config(context):
         if context.args.project_config:
             project_config = abspath(expanduser(expandvars(context.args.project_config)))
             return ProjectConfig.load_from(project_config)
-        return ProjectConfig.find_from(getcwd())
+        try:
+            return ProjectConfig.find_from(getcwd())
+        except FileNotFoundError as err:
+            exit(1, str(err) + _("\nYou can create a configuration file with 'roman init'."))
+    except ValidationError as e:
+        exit(1, '\n'.join(render_error(e)))
     except ProjectConfigError as e:
         exit(1, _("Invalid project configuration: {}").format(e))
+
+
+# TODO?: if file has been 'edited' but values haven't
+# changed, the outcome is 'file successfully edited'
+def report_save(output):
+    if output == Document.SaveOutput.NO_SAVE:
+        print("No changes in the file.")
+    elif output == Document.SaveOutput.SAVED_CHANGES:
+        print("File successfully edited.")
+    else:
+        print("File created.")
 
 
 def verify_engine(engine, only_when_error=False):
@@ -370,24 +395,68 @@ def build_action(context):
     if context.args.list_steps:
         steps = builder.get_steps()
         num_len = max(2, len(str(len(steps)-1)))
-        name_len = max(4, len(max(step.name or "" for step in steps)))
+        name_len = max(4, max(len(s.name or "") for s in steps))
         header_fmt = "{:>%ds}  {:%ds} {}" % (num_len, name_len)
         step_fmt = "{:%dd}. {:%ds} {}" % (num_len, name_len)
-        print(header_fmt.format('ID', 'NAME', 'IAMGE'))
+        print(header_fmt.format('ID', 'NAME', 'IMAGE'))
         for step in steps:
             print(step_fmt.format(step.ref, step.name or "", step.img))
         return
 
     if not verify_engine(engine, only_when_error=True):
         return 1
+    if not config.steps:
+        print("Nothing to build.")
+        return 1
 
     # build project
     steps = context.args.steps
     if steps:
         steps = chain.from_iterable(step.split(',') for step in steps)
-    result = builder.build(steps)
+
+    try:
+        result = builder.build(steps)
+    except KeyError as err:
+        exit(1, _("No step named {}.").format(err.args[0]))
+    except IndexError as err:
+        exit(1,
+            _("Index {} is out of range. There are {} steps. Indexing begins ar 0.")
+            .format(err.args[0], len(config.steps)))
+
     print(result)
     return result.code
+
+
+def init_action(context):
+    project_config = context.args.project_config
+    try:
+        if project_config:
+            config = ProjectConfig.load_from(project_config)
+        else:
+            config = ProjectConfig.find_from(getcwd())
+        exit(1, _("A project configuration already exists at {}".format(config.path)))
+    except FileNotFoundError:
+        pass
+
+    if project_config:
+        is_recognized = False
+        if '.' in project_config:
+            name, prefix = project_config.rsplit('.', 1)
+            is_recognized = (
+                name in ProjectConfig.DEFAULT_NAMES and
+                prefix in ProjectConfig.DEFAULT_PREFIXES
+            )
+
+        if not is_recognized:
+            # ensure expanded and absolute path
+            project_config = abspath(expanduser(expandvars(project_config)))
+            warning(_(
+                "roman won't recognize {} as a project config file without the -f flag"
+            ).format(project_config))
+    else:
+        project_config = ProjectConfig.DEFAULT_FILENAME
+    ProjectConfig.load(project_config, allow_missing=True).save()
+    print(_("Project configuration file {} created successfully.".format(project_config)))
 
 
 def config_print_action(context):
@@ -408,8 +477,8 @@ def config_set_action(context):
     if context.args.user == context.args.project:
         raise Exception("Choose either user settings or project settings")
     document = context.settings if context.args.user else context.config
-
     schema = document.validator.schema
+
     for val in context.args.values:
         try:
             key, val = val.split('=', 1)
@@ -422,15 +491,21 @@ def config_set_action(context):
                 exit(1, _("Give values in format 'key=val'."))
 
     document.validate()
-    document.save()
+    report_save(document.save())
 
 def config_del_action(context):
     if context.args.user == context.args.project:
         raise Exception("Choose either user settings or project settings")
     document = context.settings if context.args.user else context.config
     for val in context.args.keys:
-        document.mldel(val)
+        try:
+            document.mldel(val)
+        except KeyError:
+            print("Key {} doesn't exist in config.".format(val))
+
     document.validate()
+    report_save(document.save())
+
 
 def step_add_action(context):
     args = context.args

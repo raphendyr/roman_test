@@ -1,10 +1,69 @@
 import unittest
 
 from apluslms_yamlidator.utils.collections import (
+    recursive_update,
     Changes,
     ChangesDict,
     ChangesList,
 )
+
+
+class TestRecursiveUpdate(unittest.TestCase):
+
+    def test_overwrites_old_values(self):
+        old = {
+            'a': 1,
+            'b': 'abc'
+        }
+        new = {
+            'a': 2,
+            'b': 'xyz'
+        }
+        recursive_update(old, new)
+        self.assertEqual(old, new)
+
+    def test_writes_new_keys_and_keeps_old(self):
+        old = {'a': 1}
+        new = {
+            'b': 2
+        }
+        recursive_update(old, new)
+        self.assertIn('a', old)
+        self.assertIn('b', old)
+
+    def test_extends_lists(self):
+        old = {
+            'list1': [1,2,3],
+            'list2': ['a','b']
+        }
+        new = {
+            'list1': [4,5,6],
+            'list2': ('c','d')
+        }
+        recursive_update(old, new)
+        self.assertEqual(old['list1'], [1,2,3,4,5,6])
+        self.assertEqual(old['list2'], ['a','b','c','d'])
+
+    def test_updates_dicts(self):
+        old = {'dict': {
+            'a': 1,
+            'b': 2
+        }}
+        new = {'dict': {
+            'a': 3,
+            'c': 1
+        }}
+        recursive_update(old, new)
+        self.assertEqual(old['dict']['a'], 3)
+        self.assertEqual(old['dict']['b'], 2)
+        self.assertEqual(old['dict']['c'], 1)
+
+    def test_updates_dicts_recursive(self):
+        old = {'dict1': {'dict2': {'foo': 'bar'}}}
+        new = {'dict1': {'dict2': {'a': 1}, 'dict3': {'b': 2}}}
+        recursive_update(old, new)
+        self.assertEqual(sorted(list(old['dict1'].keys())), sorted(['dict2', 'dict3']))
+        self.assertEqual(old['dict1']['dict2'], {'foo': 'bar', 'a': 1})
 
 
 class TestChanges(unittest.TestCase):

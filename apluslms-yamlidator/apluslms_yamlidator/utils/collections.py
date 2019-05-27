@@ -17,6 +17,21 @@ else:
     from collections import OrderedDict
 
 
+def recursive_update(data, new_data):
+    for key in new_data:
+        if key in data:
+            if (isinstance(data[key], (list, Sequence)) and not isinstance(data[key], (str, bytes))
+                    and isinstance(new_data[key], (list, tuple, Sequence))
+                    and not isinstance(new_data[key], (str, bytes))):
+                data[key].extend(new_data[key])
+                continue
+            if (isinstance(data[key], (dict, MutableMapping))
+                    and isinstance(new_data[key], (dict, Mapping))):
+                recursive_update(data[key], new_data[key])
+                continue
+        data[key] = new_data[key]
+
+
 class OrderedDefaultDict(OrderedDict):
     __slots__ = ('default_factory',)
 

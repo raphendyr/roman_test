@@ -3,41 +3,43 @@ $schema: "http://json-schema.org/draft-04/schema"
 title: Course config
 type: object
 definitions:
+  image:
+    type: string
+    description: the docker image
   step:
     type: object
     additionalProperties: false
     required:
       - img
     properties:
+      name:
+        type: string
+        description: name of the step
+        #doesn't allow names that are only numerals
+        pattern: "[^0-9]+"
       img:
-        type: string
-        description: the docker image
+        $ref: "#/definitions/image"
       cmd:
-        type: string
+        type: [string, array]
+        minItems: 1
+        items:
+          type: string
         description: commands to execute
       mnt:
         type: string
       env:
         type: object
-      name:
-        type: string
-        # doesn't allow names that are only numerals
-        pattern: "[^0-9]+"
-        description: name of the step
-
-
 allOf:
   - $ref: version-v1.0
-
 additionalProperties: false
 properties:
   version: {}
   steps:
     type: array
     items:
-      $ref: '#/definitions/step'
+      oneOf:
+        - $ref: "#/definitions/image"
+        - $ref: "#/definitions/step"
       
 required:
   - version
-  - steps
-

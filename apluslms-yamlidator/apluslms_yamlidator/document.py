@@ -1,13 +1,14 @@
 import logging
 from abc import ABCMeta
 from copy import deepcopy
+from enum import Enum
 from hashlib import sha1
 from itertools import chain, zip_longest
 from os import makedirs
 from os.path import dirname, exists
 
 from .utils import convert_to_boolean as to_bool
-from .utils.collections import Changes, MutableMapping, Sequence
+from .utils.collections import Changes, MutableMapping, Sequence, recursive_update
 from .utils.functional import attrproxy
 from .utils.version import parse_version
 from .utils.yaml import Dict, rt_dump_all as dump_all, rt_load_all as load_all
@@ -83,6 +84,9 @@ class Versioned:
                               for idx, (ver, data) in enumerate(self._documents)}
             logger.debug("Read %d documents from %s", len(self._documents), path)
 
+    def exists(self):
+        return bool(self._documents)
+
     def _parse_version(self, data):
         if self._version_key:
             return parse_version(data.get(self._version_key, '1'))
@@ -132,7 +136,7 @@ class Versioned:
             return self._getitem(self._versions[version], validate=validate)
         return self._getitem(len(self._documents) - 1, validate=validate)
 
-    def save(self):
+    def save(self, overwrite=True):
         documents = [data for version, data in self._documents]
         try:
             content = dump_all(documents)
@@ -144,7 +148,7 @@ class Versioned:
             if self._dir and not exists(self._dir):
                 logger.debug("Creating path: %s", self._dir)
                 makedirs(self._dir)
-            with open(self.path, 'w') as f:
+            with open(self.path, 'w' if overwrite else 'x') as f:
                 f.write(content)
             self._hash = hash_
             logger.debug("Wrote %d documents to %s", len(self._documents), self.path)
@@ -201,10 +205,23 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         try:
             document = container.get_latest(max_version=version)
         except KeyError:
-            document = cls(container, None, Dict(version=str(cls.version)), version)
+            document = cls(container, None, Dict(), version)
+            document.initialize_data()
+            document.validate()
         if version is not None and document.version < version:
             document = document.upgrade(version)
         return document
+
+    @classmethod
+    def create(cls, filename):
+        document = cls.load(filename, allow_missing=True)
+        document.save(overwrite=False)
+        return document
+
+    def initialize_data(self):
+        vkey = self.version_key
+        if vkey:
+            self[vkey] = str(self.version)
 
     def __init__(self, container, index, data, version):
         self._container = container
@@ -215,6 +232,10 @@ class Document(MutableMapping, metaclass=DocumentMeta):
 
     def data_updated(self, key, data):
         self._dirty = True
+
+    @property
+    def container(self):
+        return self._container
 
     @property
     def index(self):
@@ -266,9 +287,15 @@ class Document(MutableMapping, metaclass=DocumentMeta):
         new = self.__class__(self._container, None, data, version)
         return new
 
-    def save(self):
-        if not self._dirty:
-            return False
+    class SaveOutput(Enum):
+        NO_SAVE = 0
+        SAVED_CHANGES = 1
+        CREATED_FILE = 2
+
+    def save(self, overwrite=True):
+        if not self._dirty and exists(self.path):
+            return self.SaveOutput.NO_SAVE
+        file_exists = self.container.exists()
 
         data = self._data.get_data()
         vkey = self.version_key
@@ -281,9 +308,9 @@ class Document(MutableMapping, metaclass=DocumentMeta):
             self._container._setitem(self._index, data)
         else:
             self._index = self._container._additem(data, self.version)
-        self._container.save()
+        self._container.save(overwrite)
         self._dirty = False
-        return True
+        return self.SaveOutput.SAVED_CHANGES if file_exists else self.SaveOutput.CREATED_FILE
 
     def __repr__(self):
         return "<%s%r(version=%s, data=%r)>" % (
@@ -387,3 +414,6 @@ class Document(MutableMapping, metaclass=DocumentMeta):
     def mldel(self, keys):
         container, key = find_ml(self._data, keys)
         del container[key]
+
+    def recursive_update(self, new_data):
+        recursive_update(self, new_data)

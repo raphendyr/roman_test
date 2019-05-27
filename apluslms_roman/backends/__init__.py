@@ -38,17 +38,22 @@ class BuildStep:
                 raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
             return cls(
                 index,
-                clean_image_name(data['img']),
+                data['img'],
                 data.get('cmd'),
                 data.get('mnt'),
-                dict(data.get('env', {})),
+                data.get('env'),
                 data.get('name'),
             )
         else:
             return cls(index, clean_image_name(data))
 
     def __init__(self, ref, img, cmd=None, mnt=None, env=None, name=None):
-        self.img, self.cmd, self.mnt, self.env, self.name, self.ref = img, cmd, mnt, env, name, ref
+        self.ref = ref
+        self.img = clean_image_name(img)
+        self.cmd = cmd if (cmd is None or isinstance(cmd, str)) else tuple(cmd)
+        self.mnt = mnt
+        self.env = dict(env) if env else {}
+        self.name = name
 
     def __str__(self):
         return self.name or str(self.ref)
