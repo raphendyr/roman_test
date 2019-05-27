@@ -20,13 +20,15 @@ class Builder:
 
 
     def get_steps(self, refs: list = None):
+        steps = [BuildStep.from_config(i, step)
+            for i, step in enumerate(self.config.steps)]
         if refs:
-            # NOTE: may raise KeyError or IndexError
-            steps = [self.config.get_step(ref) for ref in refs]
-        else:
-            steps = self.config.steps
-        steps = [BuildStep.from_config(i, step) for i, step in enumerate(steps)]
-        return list(OrderedDict.fromkeys(steps))
+            name_dict = {step.name: step for step in steps}
+            refs = [int(ref) if ref.isdigit() else ref.lower() for ref in refs]
+            # NOTE: May raise KeyError or IndexError
+            steps = [steps[ref] if isinstance(ref, int) else name_dict[ref] for ref in refs]
+            steps = list(OrderedDict.fromkeys(steps))
+        return steps
 
     def build(self, step_refs: list = None):
         backend = self._engine.backend
