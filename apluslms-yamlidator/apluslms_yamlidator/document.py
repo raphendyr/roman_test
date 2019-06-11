@@ -2,11 +2,11 @@ import logging
 from abc import ABCMeta
 from copy import deepcopy
 from hashlib import sha1
-from operator import attrgetter
 from os import makedirs
 from os.path import dirname, exists
 
 from .utils.collections import Changes, MutableMapping, Sequence
+from .utils.functional import attrproxy
 from .utils.version import parse_version
 from .utils.yaml import Dict, rt_dump_all as dump_all, rt_load_all as load_all
 from .validator import ValidationError, Validator
@@ -151,21 +151,21 @@ class Versioned:
             self.path,
         )
 
-
 class DocumentMeta(ABCMeta):
+    CONTAINER_ATTRS = ('schema', 'validator_manager', 'version_key')
+
     def __new__(metacls, name, bases, namespace, **kwargs):
         container = namespace.pop('Container', None)
-        container_args = ('schema', 'validator_manager', 'version_key')
-        extras = {k: namespace.pop(k) for k in container_args if k in namespace}
+        extras = {k: namespace.pop(k) for k in metacls.CONTAINER_ATTRS if k in namespace}
 
-        for arg in container_args:
-            namespace[arg] = property(attrgetter('_'+arg))
+        for arg in metacls.CONTAINER_ATTRS:
+            namespace[arg] = attrproxy('__class__', arg)
 
         cls = super().__new__(metacls, name, bases, namespace, **kwargs)
 
         if not container:
             container = cls.Container
-        container_namespace = {'_'+k: (extras.get(k) or getattr(container, '_'+k)) for k in container_args}
+        container_namespace = {'_'+k: (extras.get(k) or getattr(container, '_'+k)) for k in metacls.CONTAINER_ATTRS}
         container_namespace['_document_class'] = cls
         cls.Container = type(
             '%s-%s' % (name, container.__name__),
@@ -174,6 +174,9 @@ class DocumentMeta(ABCMeta):
         )
 
         return cls
+
+for arg in DocumentMeta.CONTAINER_ATTRS:
+    setattr(DocumentMeta, arg, attrproxy('Container', '_'+arg))
 
 
 class Document(MutableMapping, metaclass=DocumentMeta):
