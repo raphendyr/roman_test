@@ -19,6 +19,7 @@ from os.path import (
 
 from .utils.decorator import cached_property
 from .utils.module_resources import get_module_resources, get_resource_text
+from .utils.translation import _
 from .utils.yaml import load as yaml_load
 
 
@@ -77,6 +78,7 @@ def write_schema(dir_, basename, data):
             makedirs(dir_)
         except IOError as e:
             logger.warning(_("Failed to create the schema cache dir %s: %s"), dir_, e)
+            return
     path = join(dir_, basename) + '.json'
     logger.debug("Writing a schema to a cache file %s", path)
     try:
