@@ -1,4 +1,4 @@
-from os import environ, getuid, getegid
+from os import environ, getuid, getegid, mkdir
 from os.path import isdir
 
 from apluslms_yamlidator.utils.decorator import cached_property
@@ -38,6 +38,9 @@ class Builder:
         backend.prepare(task, observer)
 
         observer.enter_build()
+        # FIXME: add support for other build paths
+        if not isdir('_build'):
+            mkdir('_build')
         result = backend.build(task, observer)
 
         observer.done(data=result)
