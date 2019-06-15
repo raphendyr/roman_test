@@ -1,7 +1,6 @@
 import logging
 from codecs import open
 from collections import OrderedDict
-from functools import partial
 from itertools import zip_longest
 from json import dump as json_dumpf, loads as json_load
 from os import (

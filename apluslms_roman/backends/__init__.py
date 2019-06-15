@@ -35,7 +35,8 @@ class BuildStep:
     def from_config(cls, index, data):
         if isinstance(data, Mapping):
             if 'img' not in data:
-                raise RuntimeError("Missing image name (img) in step configuration: {}".format(data))
+                raise RuntimeError(
+                    "Missing image name (img) in step configuration: {}".format(data))
             return cls(
                 index,
                 data['img'],
@@ -44,8 +45,7 @@ class BuildStep:
                 data.get('env'),
                 data.get('name'),
             )
-        else:
-            return cls(index, clean_image_name(data))
+        return cls(index, clean_image_name(data))
 
     def __init__(self, ref, img, cmd=None, mnt=None, env=None, name=None):
         self.ref = ref

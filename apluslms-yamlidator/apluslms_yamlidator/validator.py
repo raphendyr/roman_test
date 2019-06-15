@@ -1,6 +1,5 @@
 import logging
 import re
-import sys
 from collections import OrderedDict
 from collections.abc import Mapping, Sequence
 from functools import lru_cache
@@ -9,7 +8,6 @@ from urllib.parse import quote_plus as quote, unquote_plus as unquote, urlsplit
 from jsonschema import (
     RefResolver,
     ValidationError,
-    validate,
     validators,
 )
 from requests import get as requests_get

@@ -1,7 +1,5 @@
-import itertools
 from abc import abstractmethod
-from copy import deepcopy
-from os.path import exists, join
+from os.path import join
 
 from apluslms_yamlidator.document import Document
 from apluslms_yamlidator.utils.collections import OrderedDefaultDict, OrderedDict

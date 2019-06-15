@@ -32,7 +32,7 @@ class ProjectConfig(Document):
 
         if not isdir(path):
             raise ProjectConfigError(
-                "Path {} doesn't exists or is not a directory".format(path)
+                _("Path {} doesn't exist or is not a directory").format(path)
             )
 
         for filename in listdir(path):

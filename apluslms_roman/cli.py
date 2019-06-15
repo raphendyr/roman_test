@@ -74,10 +74,14 @@ class CallbackArgumentParser(argparse.ArgumentParser):
 
         if callback_dest is None:
             callback_dest = 'action'
-        self.register('action', 'parsers', partial(CallbackSubParsersAction, callback_dest=callback_dest))
+        self.register('action', 'parsers',
+            partial(CallbackSubParsersAction, callback_dest=callback_dest))
         self._callback_dest = callback_dest
         self._callback_subparsers = None
-        self._callback_subparser_defaults = callback_subparser_defaults.copy() if callback_subparser_defaults is not None else {}
+        if callback_subparser_defaults is not None:
+            self._callback_subparser_defaults = callback_subparser_defaults.copy()
+        else:
+            self._callback_subparser_defaults = {}
 
     @property
     def help_callback(self):
@@ -174,7 +178,10 @@ def create_parser(version=__version__,
         metavar=_('DIR'),
         default=[],
         action='append',
-        help=_("Change to directory DIR before reading the configuration file or doing anything else. If specified multiple times, then values are joined with `os.path.join`."))
+        help=_(
+            "Change to directory DIR before reading the configuration "
+            "file or doing anything else. If specified multiple times, "
+            "then values are joined with `os.path.join`."))
     parser.add_argument('-f', '--file',
         dest='project_config',
         metavar=_('FILE'),
@@ -232,7 +239,9 @@ def add_cli_actions(parser):
         help=_("a list of sub commands:"))
     parser.use_subparsers(
         title=_("Commands"),
-        description=_("Top level commands. Check the per command help with `%(prog)s COMMAND --help`."))
+        description=_(
+            "Top level commands. Check the per command help "
+            "with `%(prog)s COMMAND --help`."))
 
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
@@ -293,7 +302,9 @@ def add_cli_actions(parser):
             help=_("validate an YAML against a known schema"))
         validate_schema.add_argument('-v', '--version', metavar='version',
             dest='schema_version',
-            help=_("the version of a schema for validation (read from 'version' in a document by default)"))
+            help=_(
+                "the version of a schema for validation "
+                "(read from 'version' in a document by default)"))
         validate_schema.add_argument('schema_name', metavar='schema',
             help=_("the name of a schema for validation"))
         validate_schema.add_argument('data_files', metavar='file', nargs='+',
@@ -337,7 +348,8 @@ def get_engine(context):
     try:
         return Engine(settings=context.settings)
     except ImportError:
-        exit(1, _("ERROR: Unable to find backend '{}'.").format(context.settings.get('backend', 'docker')))
+        exit(1, _("ERROR: Unable to find backend '{}'.").format(
+            context.settings.get('backend', 'docker')))
 
 
 def get_config(context):
@@ -516,11 +528,11 @@ def step_add_action(context):
         except ValueError:
             exit(1, "env is a dict, so values need to be in key=val format, e.g. a=1 b=2")
     step = {
-        "img": args.img,
-        "cmd": args.cmd,
-        "mnt": args.mnt,
-        "env": env,
-        "name": args.name
+        'img': args.img,
+        'cmd': args.cmd,
+        'mnt': args.mnt,
+        'env': env,
+        'name': args.name
     }
     step = {k: v for k, v in step.items() if v}
     config = get_config(context)
@@ -537,13 +549,13 @@ def step_add_action(context):
 
 def step_del_action(context):
     def confirm_del(step):
-        print("step:")
+        print('step:')
         print('  {}'.format(yaml_dump(step.get_data()).replace('\n', '\n  ')))
         while True:
             i = input("Delete this step? (y/n) ").lower()
-            if i == "y":
+            if i == 'y':
                 return True
-            if i == "n":
+            if i == 'n':
                 return False
 
     ref = context.args.ref.lower()
