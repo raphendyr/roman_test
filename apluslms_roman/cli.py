@@ -248,54 +248,71 @@ def add_cli_actions(parser):
         help=_("build the project (default action)"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
-    build.add_argument('-l', '--list-steps',
-        action='store_true',
-        help=_("list all available steps and exit"))
 
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
     parser.set_callback(build_action)
 
+
     parser.add_parser('init',
         callback=init_action,
         help=("create roman settings file in current directory"))
 
+
     config = parser.add_parser('config', aliases=['c'],
         callback=config_print_action,
         help=_("manage %(prog)s configuration"))
-    config.add_argument('-u', '--user', action='store_true',
+
+    config.add_argument('-g', '--global', action='store_true', dest='global_',
         help=_("limit actions to the global %(prog)s configuration"))
+
     config.add_argument('-p', '--project', action='store_true',
         help=_("limit actions to the project configuration"))
+
     with config.use_subparsers(title=_("Config actions")):
         config.add_parser('print', aliases=['p'],
             callback=config_print_action,
-            help=_("print configurations (default action)"))
+            help=_("print configurations (default action)")
+            )
         setval = config.add_parser('set', aliases=['s'],
             callback=config_set_action,
             help=_("change/add values in the configuration"))
         setval.add_argument('values', nargs='+', help=_("format: key=val"))
-        delval = config.add_parser('remove', aliases=['r'],
-            callback=config_del_action,
+
+        delval = config.add_parser('remove', aliases=['rm'],
+            callback=config_rm_action,
             help=_("remove values from the configuration"))
         delval.add_argument('keys', nargs='+')
-        step_add = config.add_parser('add-step', aliases=['a'],
+
+
+    step = parser.add_parser('step',
+        help=_("actions for editing steps in the project configuration"))
+
+    with step.use_subparsers(title=_("Step actions")):
+        step.add_parser('list', aliases=['ls'],
+            callback=step_list_action,
+            help=_("list all steps and exit"))
+
+        add = step.add_parser('add', aliases=['a'],
             callback=step_add_action,
-            help=_("add step to roman.yml"))
-        step_add.add_argument('img')
-        step_add.add_argument('-n', '--name')
-        step_add.add_argument('-e', '--env', nargs='+', help=_("format: key=val"))
-        step_add.add_argument('-c', '--cmd')
-        step_add.add_argument('-m', '--mnt')
-        step_del = config.add_parser('del-step', aliases=['d'],
-            callback=step_del_action,
-            help=_("delete step from roman.yml."))
-        step_del.add_argument('ref', help=_("ref can be either step index or name"))
-        step_del.add_argument('-f', '--force', action='store_true',
+            help=_("add step to project config"))
+        add.add_argument('img')
+        add.add_argument('-n', '--name')
+        add.add_argument('-e', '--env', nargs='+', help=_("format: key=val"))
+        add.add_argument('-c', '--cmd')
+        add.add_argument('-m', '--mnt')
+
+        remove = step.add_parser('remove', aliases=['rm'],
+            callback=step_rm_action,
+            help=_("remove a step from project config"))
+        remove.add_argument('ref', help=_("ref can be either step index or name"))
+        remove.add_argument('-f', '--force', action='store_true',
             help=_("delete step without confirmation"))
+
 
     validate = parser.add_parser('validate',
         help=_("validatation actions for debuging"))
+
     with validate.use_subparsers(title=_("Validate actions")):
         validate_schema = validate.add_parser('schema',
             callback=validate_schema_action,
@@ -404,17 +421,6 @@ def build_action(context):
     engine = get_engine(context)
     builder = engine.create_builder(config)
 
-    if context.args.list_steps:
-        steps = builder.get_steps()
-        num_len = max(2, len(str(len(steps)-1)))
-        name_len = max(4, max(len(s.name or "") for s in steps))
-        header_fmt = "{:>%ds}  {:%ds} {}" % (num_len, name_len)
-        step_fmt = "{:%dd}. {:%ds} {}" % (num_len, name_len)
-        print(header_fmt.format('ID', 'NAME', 'IMAGE'))
-        for step in steps:
-            print(step_fmt.format(step.ref, step.name or "", step.img))
-        return
-
     if not verify_engine(engine, only_when_error=True):
         return 1
     if not config.steps:
@@ -477,7 +483,7 @@ def config_print_action(context):
         print("---\n# arguments:")
         data = {k: v for k, v in vars(context.args).items() if k[0] != '_' and not callable(v)}
         yaml_dump(data, stdout)
-    if all_ or context.args.user:
+    if all_ or context.args.global_:
         print("---\n# roman settings:")
         yaml_dump(context.settings._data, stdout)
     if all_ or context.args.project:
@@ -486,10 +492,9 @@ def config_print_action(context):
 
 
 def config_set_action(context):
-    if context.args.user == context.args.project:
-        raise Exception("Choose either user settings or project settings")
-    document = context.settings if context.args.user else context.config
-    schema = document.validator.schema
+    if context.args.global_ and context.args.project:
+        exit(1, "Choose either global settings or project settings")
+    document = context.settings if context.args.global_ else get_config(context)
 
     for val in context.args.values:
         try:
@@ -505,10 +510,15 @@ def config_set_action(context):
     document.validate()
     report_save(document.save())
 
-def config_del_action(context):
-    if context.args.user == context.args.project:
-        raise Exception("Choose either user settings or project settings")
-    document = context.settings if context.args.user else context.config
+
+def config_rm_action(context):
+    if context.args.global_ and context.args.project:
+        exit(1, "Choose either global settings or project settings")
+    document = context.settings if context.args.global_ else get_config(context)
+    if not document.container.exists():
+        print("Cannot delete from config because config file doesn't exist.")
+        exit(0)
+
     for val in context.args.keys:
         try:
             document.mldel(val)
@@ -517,6 +527,20 @@ def config_del_action(context):
 
     document.validate()
     report_save(document.save())
+
+
+def step_list_action(context):
+    steps = get_config(context).steps
+    if not steps:
+        print("The project config has no steps.")
+        return
+    num_len = max(2, len(str(len(steps)-1)))
+    name_len = max(4, max(len(s.get('name', '')) for s in steps))
+    header_fmt = "{:>%ds}  {:%ds} {}" % (num_len, name_len)
+    step_fmt = "{:%dd}. {:%ds} {}" % (num_len, name_len)
+    print(header_fmt.format('ID', 'NAME', 'IMAGE'))
+    for i, step in enumerate(steps):
+        print(step_fmt.format(i, step.get('name', ''), step['img']))
 
 
 def step_add_action(context):
@@ -547,7 +571,8 @@ def step_add_action(context):
     config.save()
     print("Step successfully added to config.")
 
-def step_del_action(context):
+
+def step_rm_action(context):
     def confirm_del(step):
         print('step:')
         print('  {}'.format(yaml_dump(step.get_data()).replace('\n', '\n  ')))
@@ -570,7 +595,7 @@ def step_del_action(context):
         exit(1, _("There is no step called '{}'").format(ref))
     if not context.args.force and not confirm_del(step):
         return
-    config.del_step(ref)
+    config.del_step(step)
     config.validate()
     config.save()
     print("Step successfully removed from config.")

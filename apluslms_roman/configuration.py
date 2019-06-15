@@ -3,6 +3,7 @@ from os import listdir
 from os.path import basename, join, isdir, isfile
 
 from apluslms_yamlidator.document import Document
+from apluslms_yamlidator.utils.collections import Mapping
 from apluslms_yamlidator.utils.version import Version
 
 from .utils.translation import _
@@ -64,8 +65,9 @@ class ProjectConfig(Document):
                 raise ValueError("A step with the name '%s' already exists." % step['name'])
         self.steps.append(step)
 
-    def del_step(self, step_ref):
-        step = self.get_step(step_ref)
+    def del_step(self, step):
+        if not isinstance(step, (dict, Mapping)):
+            step = self.get_step(step)
         self.steps.remove(step)
 
     def get_step(self, step_ref):
