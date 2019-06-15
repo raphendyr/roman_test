@@ -421,6 +421,10 @@ def build_action(context):
     engine = get_engine(context)
     builder = engine.create_builder(config)
 
+    if hasattr(context.args, 'list_steps') and context.args.list_steps:
+        step_list_action(context)
+        return 0
+
     if not verify_engine(engine, only_when_error=True):
         return 1
     if not config.steps:
