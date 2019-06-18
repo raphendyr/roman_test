@@ -1,8 +1,17 @@
 import unittest
 
-from apluslms_yamlidator.document import Document
+from apluslms_yamlidator.document import find_ml, Document
 
 from .test_validator import patch_validator_registry
+
+
+class TestFindML(unittest.TestCase):
+
+    def test_raises_keyerror_with_correct_key(self):
+        data = {'foo': {}}
+        with self.assertRaises(KeyError) as cm:
+           find_ml(data, 'foo.bar.baz')
+        self.assertEqual(cm.exception.args[0], 'foo.bar')
 
 
 class TestInMemoryDocument(unittest.TestCase):
@@ -82,6 +91,13 @@ class TestInMemoryDocument(unittest.TestCase):
         with self.assertRaises(KeyError):
             d['foo']
 
+        d['foo'] = {}
+        with self.assertRaises(KeyError) as cm:
+            d.mlget('foo.bar')
+        self.assertEqual(cm.exception.args[0], 'foo.bar')
+        with self.assertRaises(KeyError) as cm:
+            d.mlget('foo.bar.baz')
+        self.assertEqual(cm.exception.args[0], 'foo.bar.baz')
 
 @patch_validator_registry
 class TestInMemoryDocumentWithSchema(unittest.TestCase):

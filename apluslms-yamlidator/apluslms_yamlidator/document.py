@@ -14,6 +14,8 @@ from .validator import ValidationError, Validator
 
 logger = logging.getLogger(__name__)
 
+_NoDefault = object()
+
 
 def hash(data):
     if isinstance(data, str):
@@ -21,12 +23,12 @@ def hash(data):
     return sha1(data).digest()
 
 
-def find_ml(current, keys):
+def find_ml(current, keys, *, create_dicts=False):
     if isinstance(keys, str):
         keys = keys.split('.')
-    elif not isinstance(keys, list):
-        keys = list(keys)
-    for key in keys[:-1]:
+    elif not isinstance(keys, (tuple, list)):
+        keys = tuple(keys)
+    for i, key in enumerate(keys[:-1]):
         if isinstance(current, Sequence):
             try:
                 key = int(key)
@@ -34,7 +36,9 @@ def find_ml(current, keys):
                 pass
         try:
             current = current[key]
-        except KeyError:
+        except KeyError as err:
+            if not create_dicts:
+                raise KeyError('.'.join(keys[:i+1])) from err
             current = current.setdefault(key, {})
     return current, keys[-1]
 
@@ -317,18 +321,23 @@ class Document(MutableMapping, metaclass=DocumentMeta):
 
     # Multi-level interface
 
-    def mlget(self, keys, default=None):
-        container, key = find_ml(self._data, keys)
-        return container.get(key, default)
+    def mlget(self, keys, default=_NoDefault):
+        try:
+            container, key = find_ml(self._data, keys)
+            return container[key]
+        except KeyError as err:
+            if default is _NoDefault:
+                raise KeyError(keys) from err
+            return default
 
     def mlset(self, keys, value):
-        container, key = find_ml(self._data, keys)
+        container, key = find_ml(self._data, keys, create_dicts=True)
         container[key] = value
 
     def mlsetwork(self, keys, value):
-        container, key = find_ml(self._data, keys)
+        container, key = find_ml(self._data, keys, create_dicts=True)
         return container.setwork(key, value)
 
     def mlsetdefault(self, keys, value):
-        container, key = find_ml(self._data, keys)
+        container, key = find_ml(self._data, keys, create_dicts=True)
         return container.setdefault(key, value)
