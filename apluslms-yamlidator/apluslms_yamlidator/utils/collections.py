@@ -56,13 +56,13 @@ class Changes(metaclass=ChangesMeta):
         return None
 
     @classmethod
-    def wrap(cls, data, parent=None, key=None, default=None):
+    def wrap(cls, data, *, parent=None, key=None, default=None):
         wrapper = cls.get_wrapper(data)
         if wrapper:
             return wrapper(data, parent=parent, key=key, default=default)
         return data
 
-    def __init__(self, data, parent=None, key=None, **kwargs):
+    def __init__(self, data, *, parent=None, key=None, **kwargs):
         super().__init__()
         self._data = data
         self._parent = parent
@@ -80,10 +80,11 @@ class Changes(metaclass=ChangesMeta):
 
 
 class ChangesList(Changes, MutableSequence, wraps=(MutableSequence, list)):
-    def __init__(self, data, parent=None, key=None, default=None):
+    def __init__(self, data=None, *, parent=None, key=None, default=None):
         super().__init__([], parent=parent, key=key)
-        for item in data:
-            self._data.append(self.wrap(item, parent=self))
+        if data is not None:
+            for item in data:
+                self._data.append(self.wrap(item, parent=self))
 
     def __iter__(self):
         yield from self._data
@@ -117,7 +118,9 @@ class ChangesList(Changes, MutableSequence, wraps=(MutableSequence, list)):
 
 
 class ChangesDict(Changes, MutableMapping, wraps=(MutableMapping, dict)):
-    def __init__(self, data, parent=None, key=None, default=None):
+    def __init__(self, data=None, *, parent=None, key=None, default=None):
+        if data is None:
+            data = {}
         super().__init__(data, parent=parent, key=key)
         self._defaults = {}
         self._work = OrderedDict()

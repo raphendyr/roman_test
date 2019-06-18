@@ -53,7 +53,7 @@ class Versioned:
             raise TypeError("{}._validator_manager is set, but ._schema is missing".format(cls.__name__))
         return None
 
-    def __init__(self, path, version_key=None, allow_missing=False):
+    def __init__(self, path, *, version_key=None, allow_missing=False):
         self.path = path
         self._dir = dirname(path)
         if version_key is not None:
