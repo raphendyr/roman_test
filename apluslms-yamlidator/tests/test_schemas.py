@@ -24,11 +24,9 @@ class TestCheckExt(unittest.TestCase):
         self.assertFalse(schemas.check_ext('test.py', ('.txt', '.pyc', '.js')))
 
 
-# FIXME: logging should be captured better. check nose.Logcapture
-@patch(schemas.__name__+'.logger')
 class TestWriteSchema(unittest.TestCase):
 
-    def test_when_directory_does_not_exists_it_is_created(self, logger):
+    def test_when_directory_does_not_exists_it_is_created(self):
         n = schemas.__name__
         with patch(n+'.exists', return_value=False) as mock_exists, \
              patch(n+'.makedirs', side_effect=IOError()) as mock_makedirs, \
@@ -39,7 +37,7 @@ class TestWriteSchema(unittest.TestCase):
             mock_makedirs.assert_called_once_with('dir')
             mock_fn.assert_not_called()
 
-    def test_schema_is_written_to_correct_file(self, logger):
+    def test_schema_is_written_to_correct_file(self):
         n = schemas.__name__
         with patch(n+'.exists', return_value=True), \
              patch(n+'.makedirs', side_effect=IOError()), \
@@ -49,7 +47,7 @@ class TestWriteSchema(unittest.TestCase):
             args, _kwargs = mock_fh.call_args
             self.assertEqual(args[0], 'dir/name.json')
 
-    def test_correct_schema_data_is_written(self, logger):
+    def test_correct_schema_data_is_written(self):
         n = schemas.__name__
         with patch(n+'.exists', return_value=True), \
              patch(n+'.makedirs', side_effect=IOError()), \

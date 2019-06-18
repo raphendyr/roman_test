@@ -17,6 +17,7 @@ from pkg_resources import parse_version
 from setuptools import __version__ as setuptools_version, find_namespace_packages, find_packages, setup
 from setuptools.command.build_py import build_py
 from stat import ST_ATIME, ST_MTIME, ST_MODE, S_IMODE
+from unittest import runner
 
 if StrictVersion(setuptools_version) < StrictVersion('20.2'):
     print('Your setuptools version does not support PEP 508. Have you installed requirements_build.txt?', file=sys.stderr)
@@ -33,6 +34,15 @@ else:
 
 
 ROOT = path.abspath(path.dirname(__file__))
+
+
+# ensure that the TextTestRunner buffers stdio
+class BufferedTextTestRunner(runner.TextTestRunner):
+    def __init__(self, *, buffer=None, **kwargs):
+        if buffer is None:
+            buffer = True
+        super().__init__(buffer=buffer, **kwargs)
+runner.BufferedTextTestRunner = BufferedTextTestRunner
 
 
 class BuildPyWithYamlConvert(build_py):
@@ -302,6 +312,7 @@ INFO = dict(
     },
 
     test_suite='tests',
+    test_runner='unittest.runner:BufferedTextTestRunner',
     cmdclass={
         'build_py': BuildPyWithYamlConvert,
     },
