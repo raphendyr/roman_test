@@ -37,15 +37,16 @@ class Builder:
 
         task = BuildTask(self.path, steps)
         observer.enter_prepare()
-        backend.prepare(task, observer)
-
-        observer.enter_build()
-        # FIXME: add support for other build paths
-        if not isdir('_build'):
-            mkdir('_build')
-        result = backend.build(task, observer)
-
-        observer.done(data=result)
+        result = backend.prepare(task, observer)
+        observer.result_msg(result)
+        if result.ok:
+            observer.enter_build()
+            # FIXME: add support for other build paths
+            if not isdir('_build'):
+                mkdir('_build')
+            result = backend.build(task, observer)
+            observer.result_msg(result)
+        observer.done(result)
         return result
 
 

@@ -1,6 +1,8 @@
-import docker
+import logging
+from contextlib import contextmanager
 from os.path import join
 
+import docker
 from apluslms_yamlidator.utils.decorator import cached_property
 
 from ..utils.translation import _
@@ -11,6 +13,22 @@ from . import (
 
 
 Mount = docker.types.Mount
+
+
+logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def create_container(client, **opts):
+    container = client.containers.create(**opts)
+    try:
+        container.start()
+        yield container
+    finally:
+        try:
+            container.remove(force=True)
+        except docker.errors.APIError as err:
+            logger.warning("Failed to stop container %s: %s", container, err)
 
 
 class DockerBackend(Backend):
@@ -59,39 +77,48 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
     def prepare(self, task, observer):
         client = self._client
         for step in task.steps:
-            observer.start_step(step)
+            observer.step_preflight(step)
             image, tag = step.img.split(':', 1)
             try:
                 img = client.images.get(step.img)
             except docker.errors.ImageNotFound:
+                observer.step_running(step)
                 observer.manager_msg(step, "Downloading image {}".format(step.img))
-                img = client.images.pull(image, tag)
-            finally:
-                observer.end_step(step)
+                try:
+                    img = client.images.pull(image, tag)
+                except docker.errors.APIError as err:
+                    observer.step_failed(step)
+                    error = "%s %s" % (err.__class__.__name__, err)
+                    return BuildResult(-1, error, step)
+            observer.step_succeeded(step)
+        return BuildResult()
 
     def build(self, task, observer):
         client = self._client
         for step in task.steps:
-            observer.start_step(step)
+            observer.step_pending(step)
             opts = self._run_opts(task, step)
-            observer.manager_msg(step, "Running container {}:".format(opts['image']))
-            container = client.containers.create(**opts)
-
+            observer.manager_msg(step, "Starting container {}:".format(opts['image']))
             try:
-                container.start()
-
-                for line in container.logs(stderr=True, stream=True):
-                    observer.container_msg(step, line.decode('utf-8'))
-
-                ret = container.wait(timeout=10)
+                with create_container(client, **opts) as container:
+                    observer.step_running(step)
+                    for line in container.logs(stderr=True, stream=True):
+                        observer.container_msg(step, line.decode('utf-8'))
+                    ret = container.wait(timeout=10)
+            except docker.errors.APIError as err:
+                observer.step_failed(step)
+                error = "%s %s" % (err.__class__.__name__, err)
+                return BuildResult(-1, error, step)
+            except KeyboardInterrupt:
+                observer.step_cancelled(step)
+                raise
+            else:
                 code = ret.get('StatusCode', None)
                 error = ret.get('Error', None)
-
                 if code or error:
+                    observer.step_failed(step)
                     return BuildResult(code, error, step)
-            finally:
-                container.remove()
-                observer.end_step(step)
+                observer.step_succeeded(step)
         return BuildResult()
 
     def verify(self):
