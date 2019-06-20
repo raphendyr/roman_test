@@ -192,8 +192,8 @@ def create_parser(version=__version__,
     return parser
 
 
-def parse_actioncontext(parser):
-    args = parser.parse_args()
+def parse_actioncontext(parser, *, args=None):
+    args = parser.parse_args(args=args)
 
     # set logging level
     max_level = len(LOG_LEVELS)-1
@@ -340,7 +340,7 @@ def add_cli_actions(parser):
     return parser
 
 
-def main():
+def main(*, args=None):
     """
     CLI main function:
     1. parse arguments
@@ -350,7 +350,7 @@ def main():
     configure_logging()
     parser = create_parser()
     add_cli_actions(parser)
-    context = parse_actioncontext(parser)
+    context = parse_actioncontext(parser, args=args)
 
     logger.debug(_("Executing action %s"), context.action_name)
     exit(context.run())
