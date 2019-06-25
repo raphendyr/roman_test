@@ -246,6 +246,8 @@ def add_cli_actions(parser):
     build = parser.add_parser('build', aliases=['b'],
         callback=build_action,
         help=_("build the project (default action)"))
+    build.add_argument('--clean', action='store_true',
+        help=_("delete old build files before building"))
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which order (use either index or step name)"))
 
@@ -437,7 +439,7 @@ def build_action(context):
         steps = chain.from_iterable(step.split(',') for step in steps)
 
     try:
-        result = builder.build(steps)
+        result = builder.build(step_refs=steps, clean_build=context.args.clean)
     except KeyError as err:
         exit(1, _("No step named {}.").format(err.args[0]))
     except IndexError as err:

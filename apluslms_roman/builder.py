@@ -1,5 +1,6 @@
 from os import environ, getuid, getegid, mkdir
 from os.path import isdir
+from shutil import rmtree
 
 from apluslms_yamlidator.utils.decorator import cached_property
 from apluslms_yamlidator.utils.collections import OrderedDict
@@ -30,7 +31,7 @@ class Builder:
             steps = list(OrderedDict.fromkeys(steps))
         return steps
 
-    def build(self, step_refs: list = None):
+    def build(self, step_refs: list = None, clean_build=False):
         backend = self._engine.backend
         observer = self._observer
         steps = self.get_steps(step_refs) # NOTE: may raise KeyError or IndexError
@@ -42,7 +43,10 @@ class Builder:
         if result.ok:
             observer.enter_build()
             # FIXME: add support for other build paths
-            if not isdir('_build'):
+            if clean_build:
+                if isdir('_build'):
+                    rmtree('_build')
+            if clean_build or not isdir('_build'):
                 mkdir('_build')
             result = backend.build(task, observer)
             observer.result_msg(result)

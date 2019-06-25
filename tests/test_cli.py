@@ -171,7 +171,7 @@ class TestBuildAction(CliTestCase):
         self.assertEqual(builder_config.steps[0]['img'], 'hello-world')
 
         builder = engine.create_builder.return_value
-        builder.build.assert_called_once_with(None)
+        builder.build.assert_called_once_with(step_refs=None, clean_build=False)
 
     def test_build_empty(self, EngineMock):
         r = self.command_test('build', config={'version': '2'}, exit_code=1)
@@ -194,7 +194,9 @@ class TestBuildAction(CliTestCase):
                 engine = EngineMock.return_value
                 builder = engine.create_builder.return_value
                 builder.build.assert_called_once()
-                self.assertListEqual(list(builder.build.call_args[0][0]), [step])
+                self.assertListEqual(
+                    list(builder.build.call_args.call_list()[0][1]['step_refs']),
+                    [step])
 
     def test_build_too_big_index(self, EngineMock):
         # Builder is mocked and steps are validated by it,
@@ -204,7 +206,9 @@ class TestBuildAction(CliTestCase):
         builder.build.side_effect = IndexError(10) # from get_steps
         r = self.command_test("build --steps 10", config=HELLO_CONFIG, exit_code=1)
         builder.build.assert_called_once()
-        self.assertListEqual(list(builder.build.call_args[0][0]), ['10'])
+        self.assertListEqual(
+            list(builder.build.call_args.call_list()[0][1]['step_refs']),
+            ['10'])
         self.assertIn("Index 10 is out of range.", r.err)
 
     def test_build_invalid_step(self, EngineMock):
@@ -215,8 +219,17 @@ class TestBuildAction(CliTestCase):
         builder.build.side_effect = KeyError('invalid') # from get_steps
         r = self.command_test("build --steps invalid", config=HELLO_CONFIG, exit_code=1)
         builder.build.assert_called_once()
-        self.assertListEqual(list(builder.build.call_args[0][0]), ['invalid'])
+        self.assertListEqual(
+            list(builder.build.call_args.call_list()[0][1]['step_refs']),
+            ['invalid'])
         self.assertIn("No step named invalid.", r.err)
+
+    def test_clean_build(self, EngineMock):
+        engine = EngineMock.return_value
+        builder = engine.create_builder.return_value
+        r = self.command_test("build --clean", config=HELLO_CONFIG, exit_code=0)
+        builder.build.assert_called_once_with(step_refs=None, clean_build=True)
+
 
 
 class TestInitAction(CliTestCase):
