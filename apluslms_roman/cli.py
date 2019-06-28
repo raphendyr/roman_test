@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 def exit(status=None, message=None):
+    # NOTE: always call with positional arguments only!
+    # after py3.8: def exit(status=None, message=None, /):
     if message:
         print(message, file=stderr)
     logging.shutdown()
