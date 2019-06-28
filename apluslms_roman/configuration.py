@@ -1,3 +1,4 @@
+from collections import Counter
 from itertools import chain
 from os import listdir
 from os.path import basename, join, isdir, isfile
@@ -58,6 +59,17 @@ class ProjectConfig(Document):
                 if isfile(filename):
                     return cls.load(filename)
         raise FileNotFoundError("Given file '{}' doesn't exist.".format(config))
+
+    def validate(self, *args, **kwargs):
+        super().validate(*args, **kwargs)
+        if not self.steps:
+            return
+        names = Counter((s['name'].lower() for s in self.steps if 'name' in s))
+        names = [name for name, amount in names.items() if amount > 1]
+        if names:
+            raise ProjectConfigError(("Step names should be unique.\n"
+                "Following names were used more than once:\n  - {}")
+                .format('\n  - '.join(names)))
 
     def add_step(self, step):
         if 'name' in step:
