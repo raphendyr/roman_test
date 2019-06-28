@@ -11,7 +11,7 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
 from apluslms_roman import cli
-from .mock_files import mock_files
+from .mock_files import VFS
 
 
 @contextmanager
@@ -78,13 +78,20 @@ class CliTestCase(TestCase):
             pass
 
         with ExitStack() as ctx:
+            _e = ctx.enter_context
+            _p = lambda *a, **kw: _e(patch(*a, **kw))
             # disable '_build' folder fix
-            ctx.enter_context(patch('apluslms_roman.builder.isdir', return_value=True))
+            _p('apluslms_roman.builder.isdir', return_value=True)
             # mock cli exit, so SystemExit is not raised and we get return code directly
-            exit_mock = ctx.enter_context(patch('apluslms_roman.cli.exit',
-                side_effect=CliExit))
+            exit_mock = _p('apluslms_roman.cli.exit', side_effect=CliExit)
             # mock files
-            vfs = ctx.enter_context(mock_files(files))
+            vfs = VFS(files)
+            _p('builtins.open', vfs.mock_open)
+            _p('apluslms_roman.configuration.listdir', vfs.mock_listdir)
+            _p('apluslms_roman.configuration.isfile', vfs.mock_isfile)
+            _p('apluslms_roman.configuration.isdir', return_value=True)
+            _p('apluslms_yamlidator.document.exists', vfs.mock_exists)
+            _p('apluslms_yamlidator.document.makedirs')
             # capture stdio
             out, err = ctx.enter_context(capture_output())
 
