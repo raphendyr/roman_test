@@ -53,6 +53,29 @@ Presuming you have that in your ``PATH``, then you can execute ``roman --help`` 
 .. _releases page: https://github.com/apluslms/roman/releases
 
 
+List of graphical user inteface binaries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* ``*-linux.AppImage`` is an AppImage_ package of Roman.
+  Download, mark file executable and run it.
+  Requires FUSE_ (installed on typical linux desktop).
+* ``*-linux.zip`` contains a single-file executable.
+  Download, extract, run ``roman``.
+  Requires that files in ``/tmp/`` can be executed.
+* ``*-mac.dmg`` contains *Roman.app* in a disk image.
+  Download, open, drag *Roman.app* to e.g. *Applications*, run.
+  **Note**: On the first time you need to right or control-click the app, select *open* in the menu and finally *open* in the dialog.
+* ``*-mac.zip`` contains *Roman.app* in a zip.
+  Same prosess as with above version.
+
+If you are not sure what file to use, then use the first one for your operating system.
+
+*Documentation on how these files are build, can be found under ``packaging`` in the source repo.*
+
+.. _AppImage: https://appimage.org/
+.. _FUSE: https://en.wikipedia.org/wiki/Filesystem_in_Userspace
+
+
 Developing
 ----------
 
@@ -92,27 +115,7 @@ To run tests:
     python3 -m unittest tests.test_cli.TestGetConfig
 
 
-List of graphical user inteface binaries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* ``*-linux.AppImage`` is an AppImage_ package of Roman.
-  Download, mark file executable and run it.
-  Requires FUSE_ (installed on typical linux desktop).
-* ``*-linux.zip`` contains a single-file executable.
-  Download, extract, run ``roman``.
-  Requires that files in ``/tmp/`` can be executed.
-* ``*-mac.dmg`` contains *Roman.app* in a disk image.
-  Download, open, drag *Roman.app* to e.g. *Applications*, run.
-  **Note**: On the first time you need to right or control-click the app, select *open* in the menu and finally *open* in the dialog.
-* ``*-mac.zip`` contains *Roman.app* in a zip.
-  Same prosess as with above version.
-
-If you are not sure what file to use, then use the first one for your operating system.
-
-*Documentation on how these files are build, can be found under ``packaging`` in the source repo.*
-
-.. _AppImage: https://appimage.org/
-.. _FUSE: https://en.wikipedia.org/wiki/Filesystem_in_Userspace
 
 
 .. badges: http://shields.io/
