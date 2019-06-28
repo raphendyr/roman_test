@@ -53,6 +53,45 @@ Presuming you have that in your ``PATH``, then you can execute ``roman --help`` 
 .. _releases page: https://github.com/apluslms/roman/releases
 
 
+Developing
+----------
+
+This repository curently holds few different python packages, which makes things problematic.
+There is set of scripts under ``./scripts/`` to make this ok.
+
+For example, you can setup development environment for you:
+
+.. code-block:: sh
+
+    # install venv (you can skip this part)
+    python3 -m venv venv
+    # or
+    python3 -m virtualenv -p python3 venv
+    # activate
+    . ./venv/bin/activate
+
+    # install roman packages
+    ./scripts/install_for_development.sh
+
+To run tests:
+
+.. code-block:: sh
+
+    # run all tests in the repo
+    #  creates virtual env, if none is active
+    ./scripts/run_all_tests.sh
+
+    # run all tests for a package
+    python3 setup.py test
+    python3 -m unittest discover -t . -s tests
+
+    # run a single test file
+    python3 -m unittest tests.test_cli
+
+    # run a single test class
+    python3 -m unittest tests.test_cli.TestGetConfig
+
+
 List of graphical user inteface binaries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
