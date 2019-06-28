@@ -1,6 +1,7 @@
 import unittest
 
 from apluslms_yamlidator.document import find_ml, Document
+from apluslms_yamlidator.validator import ValidationError
 
 from .test_validator import patch_validator_registry
 
@@ -39,12 +40,12 @@ class TestInMemoryDocument(unittest.TestCase):
         self.assertIn('aa', d)
         self.assertEqual(d['aa'], 'aa')
 
-        self.assertSetEqual(set(d), {'foo', 'aa'})
-        self.assertSetEqual(set(d.keys()), {'foo', 'aa'})
-        self.assertSetEqual(set(d.items()), {('foo', 'bar'), ('aa', 'aa')})
-        self.assertSetEqual(set(d.values()), {'bar', 'aa'})
+        self.assertSetEqual(set(d), {'version', 'foo', 'aa'})
+        self.assertSetEqual(set(d.keys()), {'version', 'foo', 'aa'})
+        self.assertSetEqual(set(d.items()), {('version', '1.0'), ('foo', 'bar'), ('aa', 'aa')})
+        self.assertSetEqual(set(d.values()), {'1.0', 'bar', 'aa'})
 
-        self.assertEqual(len(d), 2)
+        self.assertEqual(len(d), 3)
 
     def test_set_multilevel_values_to_empty_document(self):
         d = self.document
@@ -104,10 +105,12 @@ class TestInMemoryDocumentWithSchema(unittest.TestCase):
 
     def setUp(self):
         class TestDocument(Document):
-            schema = 'test-base'
             version = (1, 0)
 
         self.document = TestDocument.load('non-existent/file.yaml', allow_missing=True)
+        # add schema after loading document, so validation is skipped
+        # our document is not valid after .initialize_data()
+        TestDocument.schema = 'test-base'
 
     def test_validating_document(self, registry):
         self.document.mlset('foo.bar', 'baz')
@@ -119,5 +122,5 @@ class TestInMemoryDocumentWithSchema(unittest.TestCase):
 
     def test_validating_invalid_document(self, registry):
         self.document.mlset('foo.bar', 100)
-        with self.assertRaises(Exception): # FIXME: should be jsonschema.exceptions.ValidationError
+        with self.assertRaises(ValidationError):
             self.document.validate()

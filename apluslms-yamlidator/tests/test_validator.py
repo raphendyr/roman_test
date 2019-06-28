@@ -12,6 +12,9 @@ test_schemas = [
         'type': 'object',
         'additionalProperties': False,
         'properties': {
+            'version': {
+                'type': 'string',
+             },
             'foo': {
                 'type': 'object',
                 'additionalProperties': False,
@@ -30,11 +33,10 @@ def get_test_schemas(*args, **kwargs):
     return {schema['$id']: (lambda: schema) for schema in test_schemas}
 
 
-def patch_validator_registry(func):
-    return patch('apluslms_yamlidator.validator.schema_registry', **{
-        'schemas_with_dirs.side_effect': get_test_schemas,
-        'find_file': None,
-    })(func)
+patch_validator_registry = patch('apluslms_yamlidator.validator.schema_registry', **{
+    'schemas_with_dirs.side_effect': get_test_schemas,
+    'find_file': None,
+})
 
 
 @patch_validator_registry
