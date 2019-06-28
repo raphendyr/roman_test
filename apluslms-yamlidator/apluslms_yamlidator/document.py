@@ -172,6 +172,10 @@ class DocumentMeta(ABCMeta):
         for arg in metacls.CONTAINER_ATTRS:
             namespace[arg] = attrproxy('__class__', arg)
 
+        version = namespace.get('version')
+        if version is not None and not isinstance(version, property):
+            namespace['version'] = parse_version(version)
+
         cls = super().__new__(metacls, name, bases, namespace, **kwargs)
 
         if not container:
