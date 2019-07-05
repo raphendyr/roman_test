@@ -7,23 +7,38 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
-import os, re, sys
+import os
+import re
+import sys
 from codecs import open
 from distutils.version import StrictVersion
 from functools import lru_cache
 from glob import glob
+from json import dump as json_dump
 from os import path
 from pkg_resources import parse_version
-from setuptools import __version__ as setuptools_version, find_namespace_packages, find_packages, setup
-from setuptools.command.build_py import build_py
 from stat import ST_ATIME, ST_MTIME, ST_MODE, S_IMODE
 from unittest import runner
+
+try:
+    from setuptools import __version__ as setuptools_version, find_packages, setup
+    from setuptools.command.build_py import build_py
+except ImportError:
+    print('Setuptools is not installed! Have you installed requirements_build.txt?', file=sys.stderr)
+    sys.exit(1)
 
 if StrictVersion(setuptools_version) < StrictVersion('20.2'):
     print('Your setuptools version does not support PEP 508. Have you installed requirements_build.txt?', file=sys.stderr)
     sys.exit(1)
 
-from json import dump as json_dump
+try:
+    # setuptools >= 40.1.0
+    from setuptools import find_namespace_packages
+except ImportError:
+    # setuptools >= 3.4?
+    from setuptools import PEP420PackageFinder
+    find_namespace_packages = PEP420PackageFinder.find
+
 try:
     from ruamel.yaml import YAML
 except ImportError:
