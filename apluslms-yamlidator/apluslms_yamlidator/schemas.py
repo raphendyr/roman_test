@@ -30,6 +30,10 @@ __all__ = (
 )
 
 
+class SchemaError(Exception):
+    pass
+
+
 def get_text(path, **kwargs):
     if kwargs.get('encoding', None) is None:
         kwargs['encoding'] = 'utf-8'
@@ -56,8 +60,14 @@ def get_file_loader(path, encoding=None):
     name, ext = splitext(basename(path))
     parser = json_load if ext == 'json' else yaml_load
     def load():
-        logger.debug("Reading a schema from file: %s", path)
-        return parser(get_text(path, encoding=encoding))
+        logger.debug("Reading a schema from '%s'", path)
+        try:
+            return parser(get_text(path, encoding=encoding))
+        except Exception as error:
+            logger.error(
+                "Read operation for a schema from '%s' failed with %s: %s",
+                path, error.__class__.__name__, error)
+            raise SchemaError(path) from error
     return name, load
 
 
@@ -65,8 +75,14 @@ def get_resource_loader(module, filename):
     name, ext = splitext(filename)
     parser = json_load if ext == 'json' else yaml_load
     def load():
-        logger.debug("Reading a schema from a package: %s / %s", module, filename)
-        return parser(get_resource_text(module, filename))
+        logger.debug("Reading a schema from a package '%s:%s'", module, filename)
+        try:
+            return parser(get_resource_text(module, filename))
+        except Exception as error:
+            logger.error(
+                "Read operation for a schema from a package '%s:%s' failed with %s: %s",
+                module, filename, error.__class__.__name__, error)
+            raise SchemaError("%s:%s" % (module, filename)) from error
     return name, load
 
 
