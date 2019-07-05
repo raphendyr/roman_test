@@ -204,8 +204,13 @@ class ChangesDict(Changes, MutableMapping, wraps=(MutableMapping, dict)):
                 data[k] = v
             else:
                 defaults[k] = v
-        return "{}(data={}, default={})".format(
+        hidden = OrderedDict((k, v) for k, v in self._data.items() if k not in data)
+        items = ["data=" + repr(data)]
+        if defaults:
+            items.append("default=" + repr(defaults))
+        if hidden:
+            items.append("hidden=" + repr(hidden))
+        return "%s(%s)" % (
             self.__class__.__name__,
-            repr(data),
-            repr(defaults),
+            ', '.join(items)
         )
