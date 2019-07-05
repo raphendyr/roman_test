@@ -4,7 +4,7 @@ cd ..
 
 . scripts/_include.sh
 
-if [ -z "$VIRTUAL_ENV" ]; then
+if [ -z "${VIRTUAL_ENV:-}" ]; then
     USE_VIRTUALENV=true
     install_python
     activate_python
