@@ -1,6 +1,7 @@
 import logging
 from codecs import open
 from collections import OrderedDict
+from importlib import import_module
 from itertools import zip_longest
 from json import dump as json_dumpf, loads as json_load
 from os import (
@@ -9,6 +10,7 @@ from os import (
 )
 from os.path import (
     basename,
+    dirname,
     exists,
     isdir,
     isfile,
@@ -79,10 +81,18 @@ def get_resource_loader(module, filename):
         try:
             return parser(get_resource_text(module, filename))
         except Exception as error:
+            refname = "'%s:%s'" % (module, filename)
+            try:
+                # try to look up the file location
+                path = join(dirname(import_module(module).__file__), filename)
+            except Exception:
+                pass
+            else:
+                refname += " (%s)" % (path,)
             logger.error(
-                "Read operation for a schema from a package '%s:%s' failed with %s: %s",
-                module, filename, error.__class__.__name__, error)
-            raise SchemaError("%s:%s" % (module, filename)) from error
+                "Read operation for a schema from a package %s failed with %s: %s",
+                refname, error.__class__.__name__, error)
+            raise SchemaError(refname) from error
     return name, load
 
 
