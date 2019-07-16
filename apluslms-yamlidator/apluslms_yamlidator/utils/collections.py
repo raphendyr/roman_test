@@ -96,40 +96,38 @@ class Changes(metaclass=ChangesMeta):
 
 class ChangesList(Changes, MutableSequence, wraps=(MutableSequence, list)):
     def __init__(self, data=None, *, parent=None, key=None, default=None):
-        super().__init__([], parent=parent, key=key)
+        super().__init__(data or [], parent=parent, key=key)
         if data is not None:
-            for item in data:
-                self._data.append(self.wrap(item, parent=self))
+            self._work = [self.wrap(item, parent=self) for item in data]
+        else:
+            self._work = []
 
     def __iter__(self):
-        yield from self._data
+        yield from self._work
 
     def __len__(self):
-        return len(self._data)
+        return len(self._work)
 
     def __contains__(self, value):
-        return any(val == value for val in self._data)
+        return any(val == value for val in self._work)
 
     def __getitem__(self, idx):
-        return self._data[idx]
+        return self._work[idx]
 
     def __setitem__(self, idx, value):
-        self._data[idx] = self.wrap(value, parent=self)
+        self._data[idx] = value
+        self._work[idx] = self.wrap(value, parent=self)
         self._on_update()
 
     def __delitem__(self, idx):
         del self._data[idx]
+        del self._work[idx]
         self._on_update()
 
     def insert(self, idx, value):
-        self._data.insert(idx, self.wrap(value, parent=self))
+        self._data.insert(idx, value)
+        self._work.insert(idx, self.wrap(value, parent=self))
         self._on_update()
-
-    def get_data(self):
-        return [
-            value.get_data() if isinstance(value, Changes) else value
-            for value in self._data
-        ]
 
 
 class ChangesDict(Changes, MutableMapping, wraps=(MutableMapping, dict)):
