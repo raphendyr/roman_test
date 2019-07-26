@@ -506,12 +506,15 @@ def config_set_action(context):
         try:
             key, val = val.split('=', 1)
             document.mlset_cast(key, val)
+        except IndexError as err:
+            if hasattr(err, 'index'):
+                exit(1, _("Index {} is out of range").format(err.index))
+            exit(1, str(err))
         except ValueError as err:
             if hasattr(err, 'value_type'):
                 exit(1, _("{} should be of type '{}', but was '{}'.").format(
                     key, err.value_type, type(val).__name__))
-            else:
-                exit(1, _("Give values in format 'key=val'."))
+            exit(1, _("Give values in format 'key=val'."))
 
     document.validate()
     report_save(document.save())
