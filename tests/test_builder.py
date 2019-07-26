@@ -4,7 +4,7 @@ from apluslms_roman.builder import Builder
 from apluslms_roman.configuration import ProjectConfig
 
 
-class TestBuilder(TestCase):
+class TestBuilderGetSteps(TestCase):
 
     def setUp(self):
         config = {
@@ -18,18 +18,18 @@ class TestBuilder(TestCase):
             '/a', allow_missing=True), None, config, None)
         self.builder = Builder(None, config)
 
-    def test_get_steps(self):
+    def test_withoutRefList(self):
         steps = self.builder.get_steps()
         self.assertEqual(len(steps), 3)
         names = [s.name for s in steps]
         self.assertEqual(names, ['test1', 'test2', None])
 
-    def test_get_steps_with_ref_duplicate(self):
+    def test_withDuplicateRef_shouldReturnStepOnce(self):
         steps = self.builder.get_steps(['test1', '0'])
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].name, 'test1')
 
-    def test_get_steps_with_ref_index(self):
+    def test_namelessStep_refShouldBeIndex(self):
         steps = self.builder.get_steps(['2'])
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].ref, 2)

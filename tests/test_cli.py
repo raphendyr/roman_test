@@ -132,7 +132,7 @@ class CliTestCase(TestCase):
 
 class TestGetConfig(CliTestCase):
 
-    def test_get_config(self):
+    def test_withNormalConfig(self):
         config = {'version': '2',
             'steps': [{'img': 'hello-world'}]}
         r = self.command_test('config', config=config)
@@ -140,12 +140,12 @@ class TestGetConfig(CliTestCase):
         self.assertIn("---\n# project config", r.out)
         self.assertEqual(r.err, "")
 
-    def test_get_missing_config(self):
+    def test_withNoConfig_shouldError(self):
         r = self.command_test('config', config=None, exit_code=1)
         self.assertIn("Couldn't find project configuration from", r.err)
         self.assertIn("You can create a configuration file with", r.err)
 
-    def test_get_invalid_config(self):
+    def test_withInvalidConfig_shouldError(self):
         invalid = "version: '2'\ninvalid: value\n"
         r = self.command_test('config', config=invalid, exit_code=1)
         self.assertIn("\nValidationError:", r.err)
@@ -162,7 +162,7 @@ class TestGetConfig(CliTestCase):
 })
 class TestBuildAction(CliTestCase):
 
-    def test_build(self, EngineMock):
+    def test_normalBuild(self, EngineMock):
         _ = self.command_test('build', config=HELLO_CONFIG)
 
         engine = EngineMock.return_value
@@ -173,7 +173,7 @@ class TestBuildAction(CliTestCase):
         builder = engine.create_builder.return_value
         builder.build.assert_called_once_with(step_refs=None, clean_build=False)
 
-    def test_build_empty(self, EngineMock):
+    def test_withEmptySteps_shouldSayNothingToBuild(self, EngineMock):
         r = self.command_test('build', config={'version': '2'}, exit_code=1)
         self.assertEqual(r.out.strip(), "Nothing to build.")
 
@@ -185,7 +185,7 @@ class TestBuildAction(CliTestCase):
         builder = engine.create_builder.return_value
         builder.build.assert_not_called()
 
-    def test_build_with_steps(self, EngineMock):
+    def test_withStepRefs_shouldCallBuildWithRefList(self, EngineMock):
         for step in ('hello', '0'):
             EngineMock.reset_mock()
             with self.subTest(step=step):
@@ -198,7 +198,7 @@ class TestBuildAction(CliTestCase):
                     list(builder.build.call_args.call_list()[0][1]['step_refs']),
                     [step])
 
-    def test_build_too_big_index(self, EngineMock):
+    def test_withStepIdxOutOfRange_shouldError(self, EngineMock):
         # Builder is mocked and steps are validated by it,
         # thus only test that the cli prints correct message
         engine = EngineMock.return_value
@@ -211,7 +211,7 @@ class TestBuildAction(CliTestCase):
             ['10'])
         self.assertIn("Index 10 is out of range.", r.err)
 
-    def test_build_invalid_step(self, EngineMock):
+    def test_withNonexistantStepRef_shouldError(self, EngineMock):
         # Builder is mocked and steps are validated by it,
         # thus only test that the cli prints correct message
         engine = EngineMock.return_value
@@ -224,7 +224,7 @@ class TestBuildAction(CliTestCase):
             ['invalid'])
         self.assertIn("No step named invalid.", r.err)
 
-    def test_clean_build(self, EngineMock):
+    def test_withCleanFlag_shouldSetCleanBuildToTrue(self, EngineMock):
         engine = EngineMock.return_value
         builder = engine.create_builder.return_value
         r = self.command_test("build --clean", config=HELLO_CONFIG, exit_code=0)
@@ -234,7 +234,7 @@ class TestBuildAction(CliTestCase):
 
 class TestInitAction(CliTestCase):
 
-    def test_init(self):
+    def test_normal(self):
         r1 = self.command_test('init', config=None)
         self.assertEqual(r1.out.strip(),
             "Project configuration file roman.yml created successfully.")
@@ -246,7 +246,7 @@ class TestInitAction(CliTestCase):
         self.assertIn("A project configuration already exists at ", r2.err)
         self.assertIn('/roman.yml', r2.err)
 
-    def test_init_recognizable_custom_file_with_ext(self):
+    def test_withRecognizableCustomName_shouldNotWarnAboutName(self):
         r = self.command_test('init', config_fn='roman.yaml')
         self.assertIn("Project configuration file", r.out)
         self.assertIn("created successfully.", r.out)
@@ -254,7 +254,7 @@ class TestInitAction(CliTestCase):
         self.assertNotIn("/roman.yaml as a project config file without the -f flag", r.err)
         self.assertIn('roman.yaml', r.files)
 
-    def test_init_unrecognizable_custom_file_with_ext(self):
+    def test_withUnrecognizableCustomName_shouldWarnAboutName(self):
         r = self.command_test('init', config_fn='test_roman.yml')
         self.assertIn("Project configuration file", r.out)
         self.assertIn("created successfully.", r.out)
@@ -262,19 +262,19 @@ class TestInitAction(CliTestCase):
         self.assertIn("/test_roman.yml as a project config file without the -f flag", r.err)
         self.assertIn('test_roman.yml', r.files)
 
-    def test_init_custom_file_without_ext(self):
-        r = self.command_test("init", config_fn="test_roman")
+    def test_withNameWithoutExt_shouldWarnAboutName(self):
+        r = self.command_test("init", config_fn="roman")
         self.assertIn("Project configuration file", r.out)
         self.assertIn("created successfully.", r.out)
         self.assertIn("WARNING: roman won't recognize", r.err)
-        self.assertIn("/test_roman as a project config file without the -f flag", r.err)
-        self.assertIn('test_roman', r.files)
+        self.assertIn("/roman as a project config file without the -f flag", r.err)
+        self.assertIn('roman', r.files)
 
 
 class TestConfigSetAction(CliTestCase):
     SETTINGS = "version: '1'"
 
-    def test_normal_set(self):
+    def test_normal(self):
         r = self.command_test("config -g set docker.timeout=100", settings=self.SETTINGS)
         self.assertEqual(r.out.strip(), "File successfully edited.")
         data = r.files[SETTINGS_FN].get_written_yaml()
@@ -282,7 +282,7 @@ class TestConfigSetAction(CliTestCase):
         self.assertIn('timeout', data['docker'])
         self.assertEqual(data['docker']['timeout'], 100)
 
-    def test_set_into_new_file(self):
+    def test_withNewFile_shouldCreateFile(self):
         r = self.command_test("config -g set docker.timeout=100")
         self.assertEqual(r.out.strip(), "File created.")
         self.assertIn(SETTINGS_FN, r.files)
@@ -291,7 +291,7 @@ class TestConfigSetAction(CliTestCase):
         self.assertIn('timeout', data['docker'])
         self.assertEqual(data['docker']['timeout'], 100)
 
-    def test_set_wrong_type(self):
+    def test_withWrongType_shouldError(self):
         r = self.command_test("config -g set docker.tls_verify=2", exit_code=1)
         self.assertEqual(
             "docker.tls_verify should be of type 'boolean', but was 'str'.", r.err.strip())
@@ -299,11 +299,11 @@ class TestConfigSetAction(CliTestCase):
         self.assertEqual(
             "docker.timeout should be of type 'integer', but was 'str'.", r.err.strip())
 
-    def test_set_not_selected(self):
+    def test_withLocalAndGlobalSeletcted_shouldError(self):
         r = self.command_test("config -g -p set a=b", exit_code=1)
         self.assertEqual("Choose either global settings or project settings", r.err.strip())
 
-    def test_set_wrong_format(self):
+    def test_withWrongCommandSyntax_shouldError(self):
         r = self.command_test("config -g set docker.tls_verify: True", exit_code=1)
         self.assertEqual("Give values in format 'key=val'.", r.err.strip())
 
@@ -314,28 +314,28 @@ class TestConfigRemoveAction(CliTestCase):
         'docker': {'tls_verify': True}
     }
 
-    def test_normal_rm(self):
+    def test_normal(self):
         r = self.command_test("config -g remove docker.tls_verify", settings=self.SETTINGS)
         self.assertEqual("File successfully edited.", r.out.strip())
 
-    def test_rm_empty_file(self):
+    def test_withEmptyFile_shouldInformAboutEmptyFileAndNotError(self):
         r = self.command_test("config -g remove docker.test")
         self.assertEqual(
             "Cannot delete from config because config file doesn't exist.", r.out.strip())
 
-    def test_rm_nonexistant(self):
+    def test_withNonExistantKey_shouldNotChangeFile(self):
         r = self.command_test("config -g remove docker.test", settings=self.SETTINGS)
         self.assertIn("Key docker.test doesn't exist in config.", r.out)
         self.assertIn("No changes in the file.", r.out)
 
-    def test_rm_config_not_selected(self):
+    def test_withLocalAndGlobalSelected_shouldError(self):
         r = self.command_test("config -g -p remove a=b", exit_code=1)
         self.assertEqual("Choose either global settings or project settings", r.err.strip())
 
 
 class TestStepListAction(CliTestCase):
 
-    def test_step_list(self):
+    def test_normal(self):
         config = dict(HELLO_CONFIG)
         config['steps'] = config['steps'] + [{'img': 'hei-maailma', 'name': 'moi'}]
         r = self.command_test("step list", config=config)
@@ -343,14 +343,14 @@ class TestStepListAction(CliTestCase):
         self.assertIn(" 0. hello hello-world", r.out)
         self.assertIn(" 1. moi   hei-maailma", r.out)
 
-    def test_step_list_empty(self):
+    def test_withNoSteps_shouldSayThereAreNoSteps(self):
         r = self.command_test("step list", config={'version': '2.0'})
         self.assertEqual("The project config has no steps.", r.out.strip())
 
 
 class TestStepAddAction(CliTestCase):
 
-    def test_step_add(self):
+    def test_normal(self):
         r = self.command_test(
             "step add hello-world --name new_step "
             "--cmd 'make touchrst html' "
@@ -372,17 +372,17 @@ class TestStepAddAction(CliTestCase):
             'mnt': '/compile'
         })
 
-    def test_step_add_invalid_env(self):
+    def test_withInvalidEnv_shouldError(self):
         r = self.command_test("step add hello-world --env a: b", exit_code=1)
         self.assertEqual("env is a dict, so values need to be in key=val format, e.g. a=1 b=2",
             r.err.strip())
 
-    def test_step_add_duplicate_name(self):
+    def test_withDuplicateName_shouldError(self):
         r = self.command_test("step add hello-world --name hello",
             exit_code=1, config=HELLO_CONFIG)
         self.assertEqual("A step with the name 'hello' already exists.", r.err.strip())
 
-    def test_step_add_validation_error(self):
+    def test_withInvalidValue_shouldError(self):
         self.command_test("step add hello-world --name 123",
             config={'version': '2.0'}, exit_code=1)
 
@@ -390,7 +390,7 @@ class TestStepAddAction(CliTestCase):
 class TestStepRemoveAction(CliTestCase):
 
     @patch('apluslms_roman.cli.input', create=True)
-    def test_rm_action_confirm_no(self, mocked_input):
+    def test_withNoConfirm_shouldNotDelete(self, mocked_input):
         mocked_input.side_effect = ['n']
         r = self.command_test("step rm hello", config=HELLO_CONFIG)
         config = r.files[CONFIG_FN]
@@ -398,7 +398,7 @@ class TestStepRemoveAction(CliTestCase):
         self.assertRaises(AssertionError, config.assert_called_with, abspath(CONFIG_FN), 'w')
 
     @patch('apluslms_roman.cli.input', create=True)
-    def test_rm_action_confirm_yes(self, mocked_input):
+    def test_withYesConfirm_shouldDelete(self, mocked_input):
         mocked_input.side_effect = ['y']
         # add step in order to ensure that all steps aren't deleted
         config = dict(HELLO_CONFIG)
@@ -413,16 +413,16 @@ class TestStepRemoveAction(CliTestCase):
         self.assertNotIn(step, steps)
 
     @patch('apluslms_roman.cli.input', create=True)
-    def test_rm_action_force(self, mocked_input):
+    def test_withForce_shouldNotAskForConfirmation(self, mocked_input):
         mocked_input.side_effect = ['n']
         r = self.command_test("step rm -f hello", config=HELLO_CONFIG)
         config = r.files[CONFIG_FN].get_written_yaml()
         self.assertNotIn('steps', config)
 
-    def test_rm_action_index_error(self):
+    def test_withInvalidIndex_shouldError(self):
         r = self.command_test("step rm -f 2", config=HELLO_CONFIG, exit_code=1)
         self.assertIn("Index is out of range", r.err)
 
-    def test_rm_action_key_error(self):
+    def test_withInvalidName_shouldError(self):
         r = self.command_test("step rm -f hei", config=HELLO_CONFIG, exit_code=1)
         self.assertEqual("There is no step called 'hei'", r.err.strip())
