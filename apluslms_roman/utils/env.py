@@ -190,12 +190,15 @@ class EnvDict(OrderedDict):
 
     def set_in_env(self, name, key, val):
         env = self.envs[name]
-        matches = [item for item in env if key in item]
+        item = '{}={}'.format(key, val)
+        matches = [item for item in env
+            if (isinstance(item, MutableMapping) and key in item)
+            or (isinstance(item, str) and key == item.split('=')[0])]
         if not matches:
-            env.append({key: val})
+            env.append(item)
         else:
             first = env.index(matches[0])
-            env[first] = {key: val}
+            env[first] = item
             if len(matches) > 1:
                 env = (env[:first + 1]
                     + [item for item in env[first + 1:] if key not in item])
@@ -207,10 +210,11 @@ class EnvDict(OrderedDict):
             self.envs[name].pop(int(key))
         else:
             self.envs[name] = [item for item in self.envs[name]
-                if key not in item]
+                if (isinstance(item, MutableMapping) and key not in item)
+                or (isinstance(item, str) and key != item.split('=')[0])]
 
     def add_to_env(self, name, key, val):
-        self.envs[name].append({key: val})
+        self.envs[name].append('{}={}'.format(key, val))
 
     def get_combined(self):
         combined = OrderedDict()
@@ -224,6 +228,9 @@ class EnvDict(OrderedDict):
 
         for name, env in self.envs.items():
             for idx, item in enumerate(env):
+                if isinstance(item, str):
+                    key, _, val = item.partition('=')
+                    item = {key: val}
                 expand_env(item, name, idx)
         return combined
 

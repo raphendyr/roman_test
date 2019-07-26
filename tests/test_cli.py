@@ -379,7 +379,7 @@ class TestStepAddAction(CliTestCase):
             'img': 'hello-world',
             'name': 'new_step',
             'cmd': 'make touchrst html',
-            'env': [{'a': '1'}, {'b': '2'}],
+            'env': ['a=1', 'b=2'],
             'mnt': '/compile'
         })
 

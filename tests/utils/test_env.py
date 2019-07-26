@@ -112,19 +112,19 @@ class TestVarExpansion(TestCase):
 class EnvEdit(TestCase):
 
     def test_set(self):
-        env = EnvDict(([{'a': 1}, {'b': 2}, {'a': 3}], 0))
+        env = EnvDict((['a=1', {'b': 2}, {'a': 3}], 0))
         env.set_in_env(0, 'a', 4)
-        self.assertEqual([{'a': 4}, {'b': 2}], env.get_env(0))
+        self.assertEqual(['a=4', {'b': 2}], env.get_env(0))
 
     def test_set_not_found(self):
         env = EnvDict(([{'a': 1}], 0))
         env.set_in_env(0, 'b', 2)
-        self.assertEqual([{'a': 1}, {'b': 2}], env.get_env(0))
+        self.assertEqual([{'a': 1}, 'b=2'], env.get_env(0))
 
     def test_delete_simple(self):
-        env = EnvDict(([{'a': 1}], 0))
+        env = EnvDict(([{'a': 1}, 'a=1', 'b=2'], 0))
         env.delete_from_env(0, 'a')
-        self.assertEqual([], env.get_env(0))
+        self.assertEqual(['b=2'], env.get_env(0))
 
     def test_delete_with_index(self):
         env = EnvDict(([{'a': 1}, {'b': 2}], 0))
@@ -134,7 +134,7 @@ class EnvEdit(TestCase):
     def test_add(self):
         env = EnvDict(([{'a': 1}], 0))
         env.add_to_env(0, 'b', 2)
-        self.assertEqual([{'a': 1}, {'b': 2}], env.get_env(0))
+        self.assertEqual([{'a': 1}, 'b=2'], env.get_env(0))
 
 
 class TestSubstitutionPatterns(TestCase):

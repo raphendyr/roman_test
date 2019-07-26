@@ -608,8 +608,6 @@ def step_add_action(context):
     if env:
         if any('=' not in string for string in env):
             exit(1, "Please give env values in 'key=var' format")
-        env = [item.partition('=') for item in env]
-        env = [{item[0]: item[2]} for item in env]
     step = {
         'img': args.img,
         'cmd': args.cmd,

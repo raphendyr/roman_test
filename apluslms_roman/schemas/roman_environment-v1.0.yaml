@@ -1,13 +1,30 @@
 $schema: "http://json-schema.org/draft-07/schema"
 
+definitions:
+  envstring:
+    type: string
+    pattern: "^[A-Za-z_][A-Za-z0-9_]*=.*$"
+  envdict:
+    type: object
+    minProperties: 1
+    maxProperties: 1
+    propertyNames:
+      pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+
 properties:
   environment:
     title: build environment
     description: variables for build environment
     type: array
     items: 
-      type: object
-      minProperties: 1
-      maxProperties: 1
-      propertyNames:
-        pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+      if:
+        type: string
+      then:
+        $ref: "#/definitions/envstring"
+      else:
+        if:
+          type: object
+        then:
+          $ref: "#/definitions/envdict"
+        else:
+          type: [string, object]
