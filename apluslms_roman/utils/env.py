@@ -188,12 +188,16 @@ class EnvDict(OrderedDict):
     def get_env(self, name):
         return self.envs[name]
 
+    def find_in_env(self, name, key):
+        return [item for item in self.envs[name]
+            if (isinstance(item, MutableMapping) and (key in item
+                or ('name' in item and item['name'] == key)))
+            or (isinstance(item, str) and key == item.split('=')[0])]
+
     def set_in_env(self, name, key, val):
         env = self.envs[name]
         item = '{}={}'.format(key, val)
-        matches = [item for item in env
-            if (isinstance(item, MutableMapping) and key in item)
-            or (isinstance(item, str) and key == item.split('=')[0])]
+        matches = self.find_in_env(name, key)
         if not matches:
             env.append(item)
         else:
@@ -210,8 +214,7 @@ class EnvDict(OrderedDict):
             self.envs[name].pop(int(key))
         else:
             self.envs[name] = [item for item in self.envs[name]
-                if (isinstance(item, MutableMapping) and key not in item)
-                or (isinstance(item, str) and key != item.split('=')[0])]
+                if item not in self.find_in_env(name, key)]
 
     def add_to_env(self, name, key, val):
         self.envs[name].append('{}={}'.format(key, val))
@@ -220,6 +223,13 @@ class EnvDict(OrderedDict):
         combined = OrderedDict()
 
         def expand_env(item, env_name, env_idx):
+            if 'name' in item:
+                if 'unset' in item:
+                    if to_bool(item['unset']) and item['name'] in combined:
+                        del combined[item['name']]
+                        return
+                else:
+                    item = {item['name']: item['value']}
             for key in item:
                 try:
                     update(combined, key, item[key])

@@ -69,6 +69,21 @@ class TestVarExpansion(TestCase):
         ], 0)).get_combined()
         self.assertEqual({'VAR': 'abc', 'TEST': 'abcd'}, dict(env))
 
+    def test_string(self):
+        env = EnvDict((['a=b'], 0)).get_combined()
+        self.assertEqual({'a': 'b'}, env)
+
+    def test_nameAndValue(self):
+        env = EnvDict(([{'name': 'a', 'value': 'b'}], 0)).get_combined()
+        self.assertEqual({'a': 'b'}, env)
+
+    def test_withNameAndUnset_shouldDeleteVarFromEnv(self):
+        env = EnvDict(([
+            {'name': 'a', 'value': 'b'},
+            {'name': 'a', 'unset': 'true'}
+        ], 0)).get_combined()
+        self.assertEqual({}, env)
+
     def test_recursiveExpansion(self):
         env = EnvDict(([
             {'VAR': 'abc'},
@@ -122,7 +137,7 @@ class EnvEdit(TestCase):
         self.assertEqual([{'a': 1}, 'b=2'], env.get_env(0))
 
     def test_delete_simple(self):
-        env = EnvDict(([{'a': 1}, 'a=1', 'b=2'], 0))
+        env = EnvDict(([{'a': 1}, 'a=1', 'b=2', {'name': 'a', 'value': 3}], 0))
         env.delete_from_env(0, 'a')
         self.assertEqual(['b=2'], env.get_env(0))
 
