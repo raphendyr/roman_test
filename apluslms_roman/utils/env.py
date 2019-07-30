@@ -188,6 +188,30 @@ class EnvDict(OrderedDict):
     def get_env(self, name):
         return self.envs[name]
 
+    def set_in_env(self, name, key, val):
+        env = self.envs[name]
+        matches = [item for item in env if key in item]
+        if not matches:
+            env.append({key: val})
+        else:
+            first = env.index(matches[0])
+            env[first] = {key: val}
+            if len(matches) > 1:
+                env = (env[:first + 1]
+                    + [item for item in env[first + 1:] if key not in item])
+
+        self.envs[name] = env
+
+    def delete_from_env(self, name, key):
+        if key.isdigit():
+            self.envs[name].pop(int(key))
+        else:
+            self.envs[name] = [item for item in self.envs[name]
+                if key not in item]
+
+    def add_to_env(self, name, key, val):
+        self.envs[name].append({key: val})
+
     def get_combined(self):
         combined = OrderedDict()
 
