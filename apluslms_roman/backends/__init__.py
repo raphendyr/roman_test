@@ -2,6 +2,7 @@ from collections import namedtuple
 from collections.abc import Mapping
 
 from ..observer import BuildObserver
+from ..utils.env import EnvDict
 
 
 BACKENDS = {
@@ -32,7 +33,7 @@ class BuildStep:
     __slots__ = ('img', 'cmd', 'mnt', 'env', 'name', 'ref')
 
     @classmethod
-    def from_config(cls, index, data):
+    def from_config(cls, index, data, environment=None):
         if isinstance(data, Mapping):
             if 'img' not in data:
                 raise RuntimeError(
@@ -42,18 +43,24 @@ class BuildStep:
                 data['img'],
                 data.get('cmd'),
                 data.get('mnt'),
+                environment,
                 data.get('env'),
                 data.get('name'),
             )
         return cls(index, clean_image_name(data))
 
-    def __init__(self, ref, img, cmd=None, mnt=None, env=None, name=None):
+    def __init__(
+            self, ref, img, cmd=None, mnt=None,
+            project_env=None, step_env=None, name=None):
         self.ref = ref
         self.img = clean_image_name(img)
         self.cmd = cmd if (cmd is None or isinstance(cmd, str)) else tuple(cmd)
         self.mnt = mnt
-        self.env = dict(env) if env else {}
         self.name = name
+        self.env = EnvDict(
+            (project_env, "project configuration"),
+            (step_env, "step {}".format(str(self)))
+        ).get_combined()
 
     def __str__(self):
         return self.name or str(self.ref)

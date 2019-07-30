@@ -1,9 +1,8 @@
 import sys
 from contextlib import contextmanager, ExitStack
 from collections import namedtuple
-
+from copy import deepcopy
 from io import StringIO
-from json import dumps as json_dumps
 from os.path import abspath, dirname, join
 from shlex import split as shlex_split
 from traceback import format_exc
@@ -11,6 +10,7 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
 from apluslms_roman import cli
+from apluslms_yamlidator.utils.yaml import rt_dump as yaml_dump
 from .mock_files import VFS
 
 
@@ -60,13 +60,13 @@ class CliTestCase(TestCase):
 
         if config:
             if not isinstance(config, str):
-                config = json_dumps(config)
+                config = yaml_dump(config)
             files[config_fn or CONFIG_FN] = config
         if config_fn:
             args.extend(('--file', config_fn))
         if settings:
             if not isinstance(settings, str):
-                settings = json_dumps(settings)
+                settings = yaml_dump(settings)
             files[SETTINGS_FN] = settings
             args.extend(('--config', SETTINGS_FN))
 
@@ -106,7 +106,9 @@ class CliTestCase(TestCase):
                 if exit_code is not None:
                     returned_code = exit_args and exit_args[0] or 0
                     self.assertEqual(returned_code, exit_code,
-                        msg="cli.main exited with unexpect return code")
+                        msg="cli.main exited with unexpect return code{}".format(
+                            ": {}".format(exit_args[1]) if len(exit_args) == 2 else ""
+                        ))
 
                 # cli.exit writes message to stderr, but it was mocked..
                 if len(exit_args) == 2:
@@ -238,7 +240,8 @@ class TestInitAction(CliTestCase):
         r1 = self.command_test('init', config=None)
         self.assertEqual(r1.out.strip(),
             "Project configuration file roman.yml created successfully.")
-        self.assertIn('roman.yml', r1.files, msg="Project configuration file was not created!")
+        self.assertIn('roman.yml', r1.files,
+            msg="Project configuration file was not created!")
         data = r1.files['roman.yml'].get_written_content()
         self.assertIn('version:', data, msg="Project configuration seems to be invalid")
 
@@ -251,7 +254,8 @@ class TestInitAction(CliTestCase):
         self.assertIn("Project configuration file", r.out)
         self.assertIn("created successfully.", r.out)
         self.assertNotIn("WARNING: roman won't recognize", r.err)
-        self.assertNotIn("/roman.yaml as a project config file without the -f flag", r.err)
+        self.assertNotIn(
+            "/roman.yaml as a project config file without the -f flag", r.err)
         self.assertIn('roman.yaml', r.files)
 
     def test_withUnrecognizableCustomName_shouldWarnAboutName(self):
@@ -259,7 +263,8 @@ class TestInitAction(CliTestCase):
         self.assertIn("Project configuration file", r.out)
         self.assertIn("created successfully.", r.out)
         self.assertIn("WARNING: roman won't recognize", r.err)
-        self.assertIn("/test_roman.yml as a project config file without the -f flag", r.err)
+        self.assertIn(
+            "/test_roman.yml as a project config file without the -f flag", r.err)
         self.assertIn('test_roman.yml', r.files)
 
     def test_withNameWithoutExt_shouldWarnAboutName(self):
@@ -294,14 +299,16 @@ class TestConfigSetAction(CliTestCase):
     def test_withWrongType_shouldError(self):
         r = self.command_test("config -g set docker.tls_verify=2", exit_code=1)
         self.assertEqual(
-            "docker.tls_verify should be of type 'boolean', but was 'str'.", r.err.strip())
+            "docker.tls_verify should be of type 'boolean', but was 'str'.",
+            r.err.strip())
         r = self.command_test("config -g set docker.timeout=a", exit_code=1)
         self.assertEqual(
             "docker.timeout should be of type 'integer', but was 'str'.", r.err.strip())
 
     def test_withLocalAndGlobalSeletcted_shouldError(self):
         r = self.command_test("config -g -p set a=b", exit_code=1)
-        self.assertEqual("Choose either global settings or project settings", r.err.strip())
+        self.assertEqual("Choose either global settings or project settings",
+            r.err.strip())
 
     def test_withWrongCommandSyntax_shouldError(self):
         r = self.command_test("config -g set docker.tls_verify: True", exit_code=1)
@@ -315,7 +322,8 @@ class TestConfigRemoveAction(CliTestCase):
     }
 
     def test_normal(self):
-        r = self.command_test("config -g remove docker.tls_verify", settings=self.SETTINGS)
+        r = self.command_test("config -g remove docker.tls_verify",
+            settings=self.SETTINGS)
         self.assertEqual("File successfully edited.", r.out.strip())
 
     def test_withEmptyFile_shouldInformAboutEmptyFileAndNotError(self):
@@ -330,7 +338,8 @@ class TestConfigRemoveAction(CliTestCase):
 
     def test_withLocalAndGlobalSelected_shouldError(self):
         r = self.command_test("config -g -p remove a=b", exit_code=1)
-        self.assertEqual("Choose either global settings or project settings", r.err.strip())
+        self.assertEqual("Choose either global settings or project settings",
+            r.err.strip())
 
 
 class TestStepListAction(CliTestCase):
@@ -339,13 +348,18 @@ class TestStepListAction(CliTestCase):
         config = dict(HELLO_CONFIG)
         config['steps'] = config['steps'] + [{'img': 'hei-maailma', 'name': 'moi'}]
         r = self.command_test("step list", config=config)
-        self.assertIn("ID  NAME  IMAGE", r.out)
-        self.assertIn(" 0. hello hello-world", r.out)
-        self.assertIn(" 1. moi   hei-maailma", r.out)
+        self.assertEqual(
+            "ID  NAME  IMAGE\n"
+            " 0. hello hello-world\n"
+            " 1. moi   hei-maailma\n", r.out)
 
     def test_withNoSteps_shouldSayThereAreNoSteps(self):
         r = self.command_test("step list", config={'version': '2.0'})
         self.assertEqual("The project config has no steps.", r.out.strip())
+
+    def test_withQuestionMarkAsSteps_shouldPrintSteps(self):
+        r = self.command_test("build -s ?", config=HELLO_CONFIG)
+        self.assertIn('hello-world', r.out)
 
 
 class TestStepAddAction(CliTestCase):
@@ -354,7 +368,7 @@ class TestStepAddAction(CliTestCase):
         r = self.command_test(
             "step add hello-world --name new_step "
             "--cmd 'make touchrst html' "
-            "--env test1=a test2=${test1} --mnt /compile",
+            "--env a=1 b=2 --mnt /compile",
             config={'version': '2.0'}
         )
         self.assertEqual("Step successfully added to config.", r.out.strip())
@@ -365,16 +379,13 @@ class TestStepAddAction(CliTestCase):
             'img': 'hello-world',
             'name': 'new_step',
             'cmd': 'make touchrst html',
-            'env': {
-                'test1': 'a',
-                'test2': '${test1}',
-            },
+            'env': [{'a': '1'}, {'b': '2'}],
             'mnt': '/compile'
         })
 
     def test_withInvalidEnv_shouldError(self):
         r = self.command_test("step add hello-world --env a: b", exit_code=1)
-        self.assertEqual("env is a dict, so values need to be in key=val format, e.g. a=1 b=2",
+        self.assertEqual("Please give env values in 'key=var' format",
             r.err.strip())
 
     def test_withDuplicateName_shouldError(self):
@@ -395,15 +406,15 @@ class TestStepRemoveAction(CliTestCase):
         r = self.command_test("step rm hello", config=HELLO_CONFIG)
         config = r.files[CONFIG_FN]
         # if the file wasn't written, the file wasn't edited -> the step wasn't removed
-        self.assertRaises(AssertionError, config.assert_called_with, abspath(CONFIG_FN), 'w')
+        self.assertRaises(AssertionError,
+            config.assert_called_with, abspath(CONFIG_FN), 'w')
 
     @patch('apluslms_roman.cli.input', create=True)
     def test_withYesConfirm_shouldDelete(self, mocked_input):
         mocked_input.side_effect = ['y']
-        # add step in order to ensure that all steps aren't deleted
-        config = dict(HELLO_CONFIG)
+        config = deepcopy(HELLO_CONFIG)
         step = {'img': 'hello-world', 'name': 'step2'}
-        config['steps'] = config['steps'] + [step]
+        config['steps'].append(step)
         r = self.command_test("step rm hello", config=config)
         config = r.files[CONFIG_FN].get_written_yaml()
         self.assertIn('steps', config)
@@ -426,3 +437,35 @@ class TestStepRemoveAction(CliTestCase):
     def test_withInvalidName_shouldError(self):
         r = self.command_test("step rm -f hei", config=HELLO_CONFIG, exit_code=1)
         self.assertEqual("There is no step called 'hei'", r.err.strip())
+
+
+class TestEnvPrint(CliTestCase):
+
+    def test_printStepEnv(self):
+        config = deepcopy(HELLO_CONFIG)
+        config['steps'][0]['env'] = [{'TEST': '${TEST}!'}]
+        config['steps'].append({'img': 'hello-world', 'name': 'step2'})
+
+        settings = {
+            'version': '1.0',
+            'environment': [{'TEST': 'hello'},]
+        }
+        r = self.command_test("step env 0", config=config, settings=settings)
+        self.assertEqual("TEST: hello!", r.out.strip())
+
+        r = self.command_test("step env step2", config=config, settings=settings)
+        self.assertEqual("TEST: hello", r.out.strip())
+
+    def test_printConfigEnv_shouldOnlyPrintGlobalIfGlobalFlagIsUsed(self):
+        config = {
+            'version': '2.0',
+            'environment': [{'TEST': '${TEST}!'}]
+        }
+        settings = {
+            'version': '1.0',
+            'environment': [{'TEST': 'hello'}]
+        }
+        r = self.command_test("config env", config=config, settings=settings)
+        self.assertEqual("TEST: hello!", r.out.strip())
+        r = self.command_test("config -g env", config=config, settings=settings)
+        self.assertEqual("TEST: hello", r.out.strip())
