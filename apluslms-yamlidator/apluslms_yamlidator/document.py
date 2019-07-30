@@ -278,34 +278,27 @@ class Document(MutableMapping, metaclass=DocumentMeta):
                         self._container.path, id_
                     )
                 parent = err.parent.instance if err.parent is not None else self._data
-                indexes = [part for part in err.path if isinstance(part, int)]
+                path = err.path
+                msg = err.message
+                if "Additional properties are not allowed" in msg:
+                    msg = msg.split("'")
+                    path.append(msg[1])
                 if err.path:
-                    # check if path contains lists (lc doesn't work for lists)
-                    if indexes:
-                        index = indexes[0]
-                        split_point = err.path.index(index)
-                        path = list(err.path)[:split_point]
-                        dict_, key = find_ml(parent, path)
-                        if hasattr(dict_, '_data'):
-                            dict_ = dict_._data
-                        dict_ = dict_[key][index]
-                        if not quiet:
-                            print(_("\nError in list '{}', at index {}:").format(
-                                ".".join(path), index))
-                            print("%s[%d]:" % (path[-1], index))
-                            print("  " + dump(dict_).replace("\n", "\n  "))
-                    else:
-                        dict_, key = find_ml(parent, err.path)
-                        if hasattr(dict_, '_data'):
-                            dict_ = dict_._data
-                        try:
-                            line, column = dict_.lc.value(key)
-                            err.source = (self._container.path, line, column)
-                        # if the document wasn't read from a file, it won't have lc
-                        except Exception:
-                            if not quiet:
-                                print(_("\nError caused by {}, which had the value {}\n").format(
-                                    ".".join(err.path), dict_[key]))
+                    data, key = find_ml(parent, err.path)
+                    if hasattr(data, '_data'):
+                        data = data.get_data()
+                    try:
+                        if isinstance(data, (list, Sequence)):
+                            line, column = data.lc.item(int(key))
+                        elif (isinstance(data[key], (list, Sequence))
+                                and not isinstance(data, str)):
+                            line, column = data.lc.key(key)
+                        else:
+                            line, column = data.lc.value(key)
+                        err.source = (self._container.path, line, column)
+                    # if the document wasn't read from a file, it won't have lc
+                    except Exception:
+                        err.source = '.'.join(str(part) for part in err.path)
 
                 raise err
 

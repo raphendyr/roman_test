@@ -174,16 +174,19 @@ def format_path(path):
 def render_error(error, num_lines=5):
     out = []
     if hasattr(error, 'source'):
-        source, line, col = error.source
-        with open(source) as f:
-            lines = f.read().splitlines()
-        out.append("File '%s':" % (source,))
-        ident = len(str(line))
-        fmt = "%%%dd: %%s" % (ident,)
-        start = max(line - num_lines, 0)
-        for i, l in enumerate(lines[start:line+1], start):
-            out.append(fmt % (i, l))
-        out.append("%s^" % (" "*(col+ident+2),))
+        if isinstance(error.source, str):
+            out.append("\nError was caused by '{}'.".format(error.source))
+        else:
+            source, line, col = error.source
+            with open(source) as f:
+                lines = f.read().splitlines()
+            out.append("File '%s':" % (source,))
+            ident = len(str(line))
+            fmt = "%%%dd: %%s" % (ident,)
+            start = max(line - num_lines, 0)
+            for i, l in enumerate(lines[start:line+1], start):
+                out.append(fmt % (i, l))
+            out.append("%s^" % (" "*(col+ident+2),))
 
     context = error.context
     if context:

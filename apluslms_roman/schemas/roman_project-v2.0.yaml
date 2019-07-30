@@ -1,5 +1,5 @@
 ---
-$schema: "http://json-schema.org/draft-04/schema"
+$schema: "http://json-schema.org/draft-07/schema"
 title: Course config
 type: object
 definitions:
@@ -29,6 +29,19 @@ definitions:
         type: string
       env:
         type: object
+  stepitem:
+    if:
+      type: string
+    then:
+      $ref: "#/definitions/image"
+    else:
+      if:
+        type: object
+      then:
+        $ref: "#/definitions/step"
+      else:
+        type: [string, object]
+
 allOf:
   - $ref: version-v1.0
 additionalProperties: false
@@ -37,9 +50,7 @@ properties:
   steps:
     type: array
     items:
-      oneOf:
-        - $ref: "#/definitions/image"
-        - $ref: "#/definitions/step"
+      $ref: "#/definitions/stepitem"
       
 required:
   - version
