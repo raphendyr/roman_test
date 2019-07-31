@@ -124,34 +124,6 @@ class TestVarExpansion(TestCase):
         self.assertEqual({'VAR': 2, 'TEST1': 1, 'TEST2': 2}, dict(env))
 
 
-class EnvEdit(TestCase):
-
-    def test_set(self):
-        env = EnvDict((['a=1', {'b': 2}, {'a': 3}], 0))
-        env.set_in_env(0, 'a', 4)
-        self.assertEqual(['a=4', {'b': 2}], env.get_env(0))
-
-    def test_set_not_found(self):
-        env = EnvDict(([{'a': 1}], 0))
-        env.set_in_env(0, 'b', 2)
-        self.assertEqual([{'a': 1}, 'b=2'], env.get_env(0))
-
-    def test_delete_simple(self):
-        env = EnvDict(([{'a': 1}, 'a=1', 'b=2', {'name': 'a', 'value': 3}], 0))
-        env.delete_from_env(0, 'a')
-        self.assertEqual(['b=2'], env.get_env(0))
-
-    def test_delete_with_index(self):
-        env = EnvDict(([{'a': 1}, {'b': 2}], 0))
-        env.delete_from_env(0, '1')
-        self.assertEqual([{'a': 1}], env.get_env(0))
-
-    def test_add(self):
-        env = EnvDict(([{'a': 1}], 0))
-        env.add_to_env(0, 'b', 2)
-        self.assertEqual([{'a': 1}, 'b=2'], env.get_env(0))
-
-
 class TestSubstitutionPatterns(TestCase):
 
     def test_defaultValue_shouldUseDefaultIfVarIsNull(self):
@@ -317,6 +289,15 @@ class TestLineCol(CliTestCase):
             " " * (whitespace + 4) + "^ TEST1 hasn't been defined", r.err
         )
         self.assertIn("${TEST1}", r.err[r.err.index("^"):])
+
+
+class TestEditEnv(TestCase):
+
+    def test_replacement_shouldDeleteAllOldValues(self):
+        env = EnvDict(([{'name': 'a', 'unset': True}, 'a=b', {'a': 'c'}], 0))
+        env.set_in_env(0, 'a', 1)
+        env = env.get_env(0)
+        self.assertEqual(['a=1'], env)
 
 
 class TestStepEnvs(TestCase):

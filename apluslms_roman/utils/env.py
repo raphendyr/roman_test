@@ -209,15 +209,21 @@ class EnvDict(OrderedDict):
 
         self.envs[name] = env
 
-    def delete_from_env(self, name, key):
+    def delete_from_env(self, name, key, delete_unset=False):
         if key.isdigit():
             self.envs[name].pop(int(key))
         else:
+            to_delete = self.find_in_env(name, key)
+            if not delete_unset:
+                to_delete = [item for item in to_delete if 'unset' not in item]
+            if not to_delete:
+                return False
             self.envs[name] = [item for item in self.envs[name]
-                if item not in self.find_in_env(name, key)]
+                if item not in to_delete]
+            return True
 
-    def add_to_env(self, name, key, val):
-        self.envs[name].append('{}={}'.format(key, val))
+    def add_to_env(self, name, val):
+        self.envs[name].append(val)
 
     def get_combined(self):
         combined = OrderedDict()

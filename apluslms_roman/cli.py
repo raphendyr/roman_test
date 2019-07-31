@@ -234,6 +234,20 @@ def parse_actioncontext(parser, *, args=None):
 # parser configuration for roman cli
 
 def add_cli_actions(parser):
+    def add_env_args(env):
+        env.add_argument('-d', '--delete', action='append',
+            help=_("delete value from environment"))
+        env.add_argument('-s', '--set', action='append',
+            help=_("set value in environment (deletes other values "
+                "with same key, use --add to keep earlier values)"))
+        env.add_argument('-a', '--add', action='append',
+            help=_("add an item to the environment"))
+        env.add_argument('--unset', action='store_true',
+            help=_("when deleting values also mark them as unset"))
+        env.add_argument('--force', action='store_true',
+            help=_("when deleting values also delete any dicts that "
+                "mark them as unset"))
+
     parser.set_subparser_defaults(
         metavar=_('COMMAND'),
         help=_("a list of sub commands:"))
@@ -276,9 +290,11 @@ def add_cli_actions(parser):
             callback=config_print_action,
             help=_("print configurations (default action)"))
 
-        config.add_parser('env', aliases=['e'],
-            callback=config_env_print,
-            help=_("print project environment with variables extended"))
+        env = config.add_parser('env', aliases=['e'],
+            callback=config_env_action,
+            help=_("actions related to environment. default: print environment "
+                "with variables extended"))
+        add_env_args(env)
 
         setval = config.add_parser('set', aliases=['s'],
             callback=config_set_action,
@@ -315,8 +331,9 @@ def add_cli_actions(parser):
         remove.add_argument('-f', '--force', action='store_true',
             help=_("delete step without confirmation"))
 
-        env = step.add_parser('env', callback=step_env_print,
-            help=_("print step environment with variables extended"))
+        env = step.add_parser('env', callback=step_env_action,
+            help=_("actions related to step environments. default: print env"))
+        add_env_args(env)
         env.add_argument('ref', help=_("ref can be either step index or name"))
 
 
@@ -394,6 +411,14 @@ def get_config(context):
         exit(1, _("Invalid project configuration: {}").format(e))
 
 
+# for situations where env is given by the user
+def check_env(env):
+    if not env:
+        return
+    if any('=' not in string for string in env):
+        exit(1, "Please give env values in 'key=var' format")
+
+
 # TODO?: if file has been 'edited' but values haven't
 # changed, the outcome is 'file successfully edited'
 def report_save(output):
@@ -448,6 +473,52 @@ def select_config(context):
     if context.args.global_ and context.args.project:
         exit(1, "Choose either global settings or project settings")
     return context.settings if context.args.global_ else get_config(context)
+
+
+def env_set(env, args):
+    if not args:
+        return
+    check_env(args)
+    for arg in args:
+        key, _, val = arg.partition('=')
+        env.set_in_env('', key, val)
+
+
+def env_delete(env, context):
+    if not context.args.delete:
+        return
+    unset = context.args.unset
+    delete_unset = context.args.force
+    if unset and delete_unset:
+        exit(1, _("Please only pick one of the 'unset' and 'force' options"))
+    not_deleted = []
+    for key in context.args.delete:
+        deleted = env.delete_from_env('', key, delete_unset=delete_unset)
+        if unset and {'name': key, 'unset': True} not in env.get_env(''):
+            env.add_to_env('', {'name': key, 'unset': True})
+        elif not deleted:
+            not_deleted.append(key)
+    if not_deleted and not unset:
+        if len(not_deleted) == 1:
+            beginning = _("Key {} was not found in env").format(not_deleted[0])
+        else:
+            beginning = (_("Keys {} were not found in env")
+                .format(', '.join(not_deleted[0])))
+        if delete_unset:
+            print(beginning + _(" and couldn't be deleted. Use --unset to "
+                "mark values as unset"))
+        else:
+            print(beginning + _(" or had the value 'unset'. "
+                "Use --force to delete dicts marking values as unset "
+                "and use --unset to mark values as unset"))
+
+
+def env_add(env, args):
+    if not args:
+        return
+    check_env(args)
+    for arg in args:
+        env.add_to_env('', arg)
 
 
 # actions
@@ -534,9 +605,29 @@ def config_print_action(context):
         yaml_dump(get_config(context)._data, stdout)
 
 
+def config_env_action(context):
+    if not (context.args.delete or context.args.set or context.args.add):
+        config_env_print(context)
+        return
+    config = select_config(context)
+    env = EnvDict((config.get('environment', []), ''))
+    env_delete(env, context)
+    env_set(env, context.args.set)
+    env_add(env, context.args.add)
+    env = env.get_env('')
+    # delete env if empty
+    if not env and 'environment' in config:
+        del config['environment']
+    else:
+        config['environment'] = env
+    config.validate()
+    config.save()
+
+
 def config_env_print(context):
     if context.args.global_ and not context.args.project:
-        env = EnvDict((context.settings.get('environment', []), 'global settings'))
+        env = EnvDict(
+            (context.settings.get('environment', []), 'global settings'))
     else:
         env = get_project_environment(context)
     try:
@@ -605,9 +696,7 @@ def step_list_action(context):
 def step_add_action(context):
     args = context.args
     env = args.env
-    if env:
-        if any('=' not in string for string in env):
-            exit(1, "Please give env values in 'key=var' format")
+    check_env(env)
     step = {
         'img': args.img,
         'cmd': args.cmd,
@@ -650,15 +739,41 @@ def step_rm_action(context):
     print("Step successfully removed from config.")
 
 
-def step_env_print(context):
+def step_env_action(context):
     config = get_config(context)
-    ref = context.args.ref
-    step = get_step(config, ref)
+    step = get_step(config, context.args.ref)
+    if not (context.args.delete or context.args.set or context.args.add):
+        step_env_print(context, config, step)
+        return
+    if not isinstance(step, str):
+        env = EnvDict((step.get('env', []), ''))
+        is_str = False
+    else:
+        step = {'img': step}
+        is_str = True
+        env = EnvDict(([], ''))
+    env_delete(env, context)
+    env_set(env, context.args.set)
+    env_add(env, context.args.add)
+    #if env is empty, delete it
+    env = env.get_env('')
+    if not env and 'env' in step:
+        del step['env']
+    else:
+        step['env'] = env
+    if is_str and env:
+        config.steps[config.ref_to_index(context.args.ref)] = step
+    config.validate()
+    config.save()
+
+
+def step_env_print(context, config, step):
     try:
         env = get_project_environment(context, config)
-        step_env = None if isinstance(step, str) else step.get('env')
-        if step_env:
-            env.add_env(step_env, 'step {}'.format(step.get('name', ref)))
+        if not isinstance(step, str):
+            env.add_env(
+                step.get('env', []), 'step {}'.format(
+                    step.get('name', context.args.ref)))
         env = env.get_combined()
         if not env:
             print("Step environment is empty.")

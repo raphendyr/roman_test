@@ -276,6 +276,86 @@ class TestInitAction(CliTestCase):
         self.assertIn('roman', r.files)
 
 
+class TestConfigEnv(CliTestCase):
+
+    def test_printConfigEnv(self):
+        config = {
+            'version': '2.0',
+            'environment': ['VAR=${VAR}!']
+        }
+        settings = {
+            'version': '1.0',
+            'environment': ['VAR=hello']
+        }
+        r = self.command_test("config env", config=config, settings=settings)
+        self.assertEqual("VAR: hello!", r.out.strip())
+        r = self.command_test("config -g env", config=config, settings=settings)
+        self.assertEqual("VAR: hello", r.out.strip())
+
+    def test_printStepEnv(self):
+        config = deepcopy(HELLO_CONFIG)
+        config['steps'][0]['env'] = [{'TEST': '${TEST}!'}]
+        config['steps'].append({'img': 'hello-world', 'name': 'step2'})
+
+        settings = {
+            'version': '1.0',
+            'environment': [{'TEST': 'hello'},]
+        }
+
+        r = self.command_test("step env 0", config=config, settings=settings)
+        self.assertEqual("TEST: hello!", r.out.strip())
+        r = self.command_test("step env step2", config=config, settings=settings)
+        self.assertEqual("TEST: hello", r.out.strip())
+
+    def test_addToEnv(self):
+        r = self.command_test(
+            "config env -a a=1",
+            config={'version': '2.0'}
+        )
+        config = r.files[CONFIG_FN].get_written_yaml()
+        self.assertEqual(['a=1'], config['environment'])
+
+    def test_setInEnv(self):
+        r = self.command_test(
+            "config env -s a=1 -s b=2",
+            config={
+                'version': '2.0',
+                'environment': [{'a': 'c'}, 'a=b']}
+        )
+        env = r.files[CONFIG_FN].get_written_yaml()['environment']
+        self.assertEqual(['a=1', 'b=2'], env)
+
+    def test_deleteFromEnv(self):
+        r = self.command_test(
+            "config env -d 0",
+            config={
+                'version': '2.0',
+                'environment': ['a=1', 'b=2']}
+        )
+        env = r.files[CONFIG_FN].get_written_yaml()['environment']
+        self.assertEqual(['b=2'], env)
+
+    def test_deleteWithUnsetFlag_shouldMarkValueAsUnset(self):
+        r = self.command_test(
+            "config env --unset -d a",
+            config={
+                'version': '2.0',
+                'environment': [{'b': 0}]}
+        )
+        env = r.files[CONFIG_FN].get_written_yaml()['environment']
+        self.assertEqual([{'b': 0}, {'name': 'a', 'unset': True}], env)
+
+    def test_deleteLastValueFromEnv_shouldDeleteEmptyEnv(self):
+        r = self.command_test(
+            "config env -d a",
+            config={
+                'version': '2.0',
+                'environment': [{'a': 0}]}
+        )
+        config = r.files[CONFIG_FN].get_written_yaml()
+        self.assertNotIn('environment', config)
+
+
 class TestConfigSetAction(CliTestCase):
     SETTINGS = "version: '1'"
 
@@ -437,35 +517,3 @@ class TestStepRemoveAction(CliTestCase):
     def test_withInvalidName_shouldError(self):
         r = self.command_test("step rm -f hei", config=HELLO_CONFIG, exit_code=1)
         self.assertEqual("There is no step called 'hei'", r.err.strip())
-
-
-class TestEnvPrint(CliTestCase):
-
-    def test_printStepEnv(self):
-        config = deepcopy(HELLO_CONFIG)
-        config['steps'][0]['env'] = [{'TEST': '${TEST}!'}]
-        config['steps'].append({'img': 'hello-world', 'name': 'step2'})
-
-        settings = {
-            'version': '1.0',
-            'environment': [{'TEST': 'hello'},]
-        }
-        r = self.command_test("step env 0", config=config, settings=settings)
-        self.assertEqual("TEST: hello!", r.out.strip())
-
-        r = self.command_test("step env step2", config=config, settings=settings)
-        self.assertEqual("TEST: hello", r.out.strip())
-
-    def test_printConfigEnv_shouldOnlyPrintGlobalIfGlobalFlagIsUsed(self):
-        config = {
-            'version': '2.0',
-            'environment': [{'TEST': '${TEST}!'}]
-        }
-        settings = {
-            'version': '1.0',
-            'environment': [{'TEST': 'hello'}]
-        }
-        r = self.command_test("config env", config=config, settings=settings)
-        self.assertEqual("TEST: hello!", r.out.strip())
-        r = self.command_test("config -g env", config=config, settings=settings)
-        self.assertEqual("TEST: hello", r.out.strip())
