@@ -13,7 +13,7 @@ from apluslms_yamlidator.utils.yaml import rt_dump as yaml_dump
 from apluslms_yamlidator.validator import ValidationError, render_error
 
 from . import __version__
-from .builder import Engine
+from .builder import BackendError, Engine
 from .configuration import ProjectConfig, ProjectConfigError
 from .settings import GlobalSettings
 from .utils.env import EnvDict, EnvError
@@ -397,9 +397,8 @@ def main(*, args=None):
 def get_engine(context):
     try:
         return Engine(settings=context.settings)
-    except ImportError:
-        exit(1, _("ERROR: Unable to find backend '{}'.").format(
-            context.settings.get('backend', 'docker')))
+    except BackendError as err:
+        exit(1, _("ERROR: Unable to find backend '{}'.").format(err.backend))
 
 
 def get_config(context):
