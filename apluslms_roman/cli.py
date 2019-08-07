@@ -15,6 +15,7 @@ from apluslms_yamlidator.validator import ValidationError, render_error
 from . import __version__
 from .builder import BackendError, Engine
 from .configuration import ProjectConfig, ProjectConfigError
+from .observer import StreamObserver
 from .settings import GlobalSettings
 from .utils.env import EnvDict, EnvError
 from .utils.translation import _
@@ -269,6 +270,8 @@ def add_cli_actions(parser):
     build.add_argument('-s', '--steps', nargs='+',
         help=_("select which steps to build and in which "
             "order (use either index or step name)"))
+    build.add_argument('--no-color', action='store_true',
+        help=_("print output with no colors"))
 
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
@@ -543,8 +546,12 @@ def env_add(env, args):
 def build_action(context):
     config = get_config(context)
     engine = get_engine(context)
-    builder = engine.create_builder(config,
-        environment=get_project_environment(context, config))
+    observer = StreamObserver(colors=not context.args.no_color)
+    builder = engine.create_builder(
+        config,
+        observer=observer,
+        environment=get_project_environment(context, config),
+    )
 
     if hasattr(context.args, 'list_steps') and context.args.list_steps:
         step_list_action(context)
@@ -571,7 +578,6 @@ def build_action(context):
     except EnvError as err:
         exit(1, str(err))
 
-    print(result)
     return result.code
 
 

@@ -107,40 +107,44 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
         images = self._cache.images
         day = timedelta(days=1)
         for step in task.steps:
-            observer.step_preflight(step)
-            image, tag = step.img.split(':', 1)
-
-            last_update= images.get(step.img, None)
-            should_update = (not last_update or
-                datetime.now() - last_update >= day)
-
             try:
-                client.images.get(step.img)
-                img_found = True
-            except docker.errors.ImageNotFound:
-                img_found = False
+                observer.step_preflight(step)
+                image, tag = step.img.split(':', 1)
 
-            if not img_found or should_update:
-                observer.step_running(step)
-                if img_found:
-                    observer.manager_msg(step,
-                        ("Checking for updates for {} and "
-                        "downloading if any").format(step.img))
-                else:
-                    observer.manager_msg(step,
-                        "Downloading image {}".format(step.img))
+                last_update = images.get(step.img, None)
+                should_update = (not last_update or
+                    datetime.now() - last_update >= day)
+
                 try:
-                    client.images.pull(image, tag)
-                    images[step.img] = datetime.now()
-                except docker.errors.APIError as err:
-                    if not img_found:
-                        observer.step_failed(step)
-                        error = "%s %s" % (err.__class__.__name__, err)
-                        return BuildResult(-1, error, step)
-                    observer.manager_msg(step, "Couldn't download image. "
-                        "Using previously downloaded image")
+                    client.images.get(step.img)
+                    img_found = True
+                except docker.errors.ImageNotFound:
+                    img_found = False
 
-            observer.step_succeeded(step)
+                if not img_found or should_update:
+                    observer.step_running(step)
+                    if img_found:
+                        observer.manager_msg(step,
+                            ("Checking for updates for {} and "
+                            "downloading if any").format(step.img))
+                    else:
+                        observer.manager_msg(step,
+                            "Downloading image {}".format(step.img))
+                    try:
+                        client.images.pull(image, tag)
+                        images[step.img] = datetime.now()
+                    except docker.errors.APIError as err:
+                        if not img_found:
+                            observer.step_failed(step)
+                            error = "%s %s" % (err.__class__.__name__, err)
+                            return BuildResult(error=error, step=step)
+                        observer.manager_msg(step, "Couldn't download image. "
+                            "Using previously downloaded image")
+
+                observer.step_succeeded(step)
+            except KeyboardInterrupt:
+                observer.step_cancelled(step)
+                return BuildResult(False, step=step)
         return BuildResult()
 
     def build(self, task, observer):
@@ -148,7 +152,7 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
         for step in task.steps:
             observer.step_pending(step)
             opts = self._run_opts(task, step)
-            observer.manager_msg(step, "Starting container {}:".format(opts['image']))
+            observer.manager_msg(step, "Starting container {}".format(opts['image']))
             try:
                 with create_container(client, **opts) as container:
                     observer.step_running(step)
@@ -158,16 +162,16 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
             except docker.errors.APIError as err:
                 observer.step_failed(step)
                 error = "%s %s" % (err.__class__.__name__, err)
-                return BuildResult(-1, error, step)
+                return BuildResult(error=error, step=step)
             except KeyboardInterrupt:
                 observer.step_cancelled(step)
-                raise
+                return BuildResult(False, step=step)
             else:
                 code = ret.get('StatusCode', None)
                 error = ret.get('Error', None)
                 if code or error:
                     observer.step_failed(step)
-                    return BuildResult(code, error, step)
+                    return BuildResult(code=code, error=error, step=step)
                 observer.step_succeeded(step)
         return BuildResult()
 
