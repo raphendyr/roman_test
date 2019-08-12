@@ -60,7 +60,7 @@ python_module_exists() {
 }
 
 python_remove_caches() {
-	[ -e "$1" ] || return
+	[ -e "$1" ] || return 0
 	find "$1" -type f -name '*.py[co]' -exec rm -f -- '{}' +
 	find "$1" -type d -name '__pycache__' -exec rmdir -- '{}' +
 }
