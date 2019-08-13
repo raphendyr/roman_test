@@ -44,7 +44,10 @@ def find_ml(current, keys, *, create_dicts=False):
             if not create_dicts:
                 raise KeyError('.'.join(keys[:i+1])) from err
             current = current.setdefault(key, {})
-    return current, keys[-1]
+    key = keys[-1]
+    if isinstance(current, (Sequence)) and not isinstance(current, str):
+        key = int(key)
+    return current, key
 
 
 class Versioned:
@@ -349,7 +352,10 @@ class Document(MutableMapping, metaclass=DocumentMeta):
 
         schema_keys = list(chain.from_iterable(zip_longest((), key_list, fillvalue='properties')))
 
-        container, key = find_ml(self.validator.schema, schema_keys)
+        try:
+            container, key = find_ml(self.validator.schema, schema_keys)
+        except KeyError:
+            return None
 
         if key in container:
             container = container[key]
@@ -402,7 +408,11 @@ class Document(MutableMapping, metaclass=DocumentMeta):
 
     def mlset(self, keys, value):
         container, key = find_ml(self._data, keys, create_dicts=True)
-        container[key] = value
+        try:
+            container[key] = value
+        except IndexError as err:
+            err.index = key
+            raise err
 
     def mlset_cast(self, keys, value):
         val_type = self.find_type(keys)

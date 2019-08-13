@@ -92,6 +92,11 @@ class ProjectConfig(Document):
                 raise IndexError(idx) from err
         return self.steps_by_name[step_ref.lower()]
 
+    def ref_to_index(self, step_ref):
+        if step_ref.isdigit():
+            return int(step_ref)
+        return self.steps.index(self.get_step(step_ref))
+
     @property
     def steps(self):
         return self.setdefault('steps', [])

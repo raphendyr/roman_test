@@ -9,3 +9,6 @@ setup.cfg
 /dist/
 /venv/
 *.swp
+*.html
+.coverage*
+htmlcov/

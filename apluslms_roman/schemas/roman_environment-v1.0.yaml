@@ -1,0 +1,58 @@
+$schema: "http://json-schema.org/draft-07/schema"
+
+definitions:
+  envstring:
+    type: string
+    allOf:
+      - pattern: "^[A-Za-z_][A-Za-z0-9_]*=.+$"
+      - pattern: "^(?!(name|value|unset)=.+$)"
+  envdict:
+    type: object
+    minProperties: 1
+    maxProperties: 1
+    propertyNames:
+      allOf:
+        - pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+        - pattern: "^(?!(name|value|unset)$)"
+  namedict:
+    type: object
+    minProperties: 2
+    maxProperties: 2
+    additionalProperties: false
+    properties:
+      name:
+        description: name of the variable
+        type: string
+        pattern: "^[A-Za-z_][A-Za-z0-9_]*$"
+      value:
+        description: value of the variable
+      unset:
+        description: if true, value won't be used
+        type: boolean
+        const: true
+    required:
+      - name
+
+properties:
+  environment:
+    title: build environment
+    description: variables for build environment
+    type: array
+    items: 
+      if:
+        type: string
+      then:
+        $ref: "#/definitions/envstring"
+      else:
+        if:
+          type: object
+        then:
+          if:
+            propertyNames:
+              pattern: "^(?!(name|value|unset)$)"
+          then:
+            $ref: "#/definitions/envdict"
+          else:
+            $ref: "#/definitions/namedict"
+        else:
+          type: [string, object]

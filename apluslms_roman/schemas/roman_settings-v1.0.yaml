@@ -1,5 +1,5 @@
 ---
-$schema: "http://json-schema.org/draft-04/schema"
+$schema: "http://json-schema.org/draft-07/schema"
 title: Roman Settings
 type: object
 
@@ -13,6 +13,8 @@ optional:
 additionalProperties: false
 properties:
   version: {}
+  environment:
+    $ref: "roman_environment-v1.0#/properties/environment"
   backend:
     title: backend driver
     description: the container backend driver class
@@ -44,5 +46,4 @@ properties:
         title: docker API timeut
         description: default timeout for API calls
         type: integer
-        minimum: 0
-        exclusiveMinimum: true
+        exclusiveMinimum: 0

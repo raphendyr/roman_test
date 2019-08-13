@@ -93,6 +93,14 @@ class Changes(metaclass=ChangesMeta):
     def get_data(self):
         return self._data
 
+    def get_root(self):
+        parent = self._parent
+        if not parent:
+            return self
+        if not isinstance(parent, Changes):
+            return parent
+        return parent.get_root()
+
 
 class ChangesList(Changes, MutableSequence, wraps=(MutableSequence, list)):
     def __init__(self, data=None, *, parent=None, key=None, default=None):

@@ -9,7 +9,6 @@ from os.path import abspath, expanduser, expandvars, join as path_join
 from sys import exit as _exit, stderr, stdout
 
 from apluslms_yamlidator.document import Document
-from apluslms_yamlidator.utils.collections import OrderedDict
 from apluslms_yamlidator.utils.yaml import rt_dump as yaml_dump
 from apluslms_yamlidator.validator import ValidationError, render_error
 
@@ -17,6 +16,7 @@ from . import __version__
 from .builder import Engine
 from .configuration import ProjectConfig, ProjectConfigError
 from .settings import GlobalSettings
+from .utils.env import EnvDict, EnvError
 from .utils.translation import _
 
 
@@ -234,6 +234,20 @@ def parse_actioncontext(parser, *, args=None):
 # parser configuration for roman cli
 
 def add_cli_actions(parser):
+    def add_env_args(env):
+        env.add_argument('-d', '--delete', action='append',
+            help=_("delete value from environment"))
+        env.add_argument('-s', '--set', action='append',
+            help=_("set value in environment (deletes other values "
+                "with same key, use --add to keep earlier values)"))
+        env.add_argument('-a', '--add', action='append',
+            help=_("add an item to the environment"))
+        env.add_argument('--unset', action='store_true',
+            help=_("when deleting values also mark them as unset"))
+        env.add_argument('--force', action='store_true',
+            help=_("when deleting values also delete any dicts that "
+                "mark them as unset"))
+
     parser.set_subparser_defaults(
         metavar=_('COMMAND'),
         help=_("a list of sub commands:"))
@@ -274,8 +288,14 @@ def add_cli_actions(parser):
     with config.use_subparsers(title=_("Config actions")):
         config.add_parser('print', aliases=['p'],
             callback=config_print_action,
-            help=_("print configurations (default action)")
-            )
+            help=_("print configurations (default action)"))
+
+        env = config.add_parser('env', aliases=['e'],
+            callback=config_env_action,
+            help=_("actions related to environment. default: print environment "
+                "with variables extended"))
+        add_env_args(env)
+
         setval = config.add_parser('set', aliases=['s'],
             callback=config_set_action,
             help=_("change/add values in the configuration"))
@@ -310,6 +330,11 @@ def add_cli_actions(parser):
         remove.add_argument('ref', help=_("ref can be either step index or name"))
         remove.add_argument('-f', '--force', action='store_true',
             help=_("delete step without confirmation"))
+
+        env = step.add_parser('env', callback=step_env_action,
+            help=_("actions related to step environments. default: print env"))
+        add_env_args(env)
+        env.add_argument('ref', help=_("ref can be either step index or name"))
 
 
     validate = parser.add_parser('validate',
@@ -386,6 +411,14 @@ def get_config(context):
         exit(1, _("Invalid project configuration: {}").format(e))
 
 
+# for situations where env is given by the user
+def check_env(env):
+    if not env:
+        return
+    if any('=' not in string for string in env):
+        exit(1, "Please give env values in 'key=var' format")
+
+
 # TODO?: if file has been 'edited' but values haven't
 # changed, the outcome is 'file successfully edited'
 def report_save(output):
@@ -416,12 +449,85 @@ def verify_engine(engine, only_when_error=False):
     return True
 
 
+def get_project_environment(context, config=None):
+    if config is None:
+        config = get_config(context)
+    return EnvDict(
+        (context.settings.mlget('environment', []), 'global settings'),
+        (config.mlget('environment', []), 'project configuration')
+    )
+
+
+def get_step(config, ref):
+    try:
+        return config.get_step(ref)
+    except IndexError:
+        exit(1, _(
+            "Index is out of range. Remember, indexing start from 0. "
+            "Use 'roman --list-steps' to see step indexes."))
+    except KeyError:
+        exit(1, _("There is no step called '{}'").format(ref))
+
+
+def select_config(context):
+    if context.args.global_ and context.args.project:
+        exit(1, "Choose either global settings or project settings")
+    return context.settings if context.args.global_ else get_config(context)
+
+
+def env_set(env, args):
+    if not args:
+        return
+    check_env(args)
+    for arg in args:
+        key, _, val = arg.partition('=')
+        env.set_in_env('', key, val)
+
+
+def env_delete(env, context):
+    if not context.args.delete:
+        return
+    unset = context.args.unset
+    delete_unset = context.args.force
+    if unset and delete_unset:
+        exit(1, _("Please only pick one of the 'unset' and 'force' options"))
+    not_deleted = []
+    for key in context.args.delete:
+        deleted = env.delete_from_env('', key, delete_unset=delete_unset)
+        if unset and {'name': key, 'unset': True} not in env.get_env(''):
+            env.add_to_env('', {'name': key, 'unset': True})
+        elif not deleted:
+            not_deleted.append(key)
+    if not_deleted and not unset:
+        if len(not_deleted) == 1:
+            beginning = _("Key {} was not found in env").format(not_deleted[0])
+        else:
+            beginning = (_("Keys {} were not found in env")
+                .format(', '.join(not_deleted[0])))
+        if delete_unset:
+            print(beginning + _(" and couldn't be deleted. Use --unset to "
+                "mark values as unset"))
+        else:
+            print(beginning + _(" or had the value 'unset'. "
+                "Use --force to delete dicts marking values as unset "
+                "and use --unset to mark values as unset"))
+
+
+def env_add(env, args):
+    if not args:
+        return
+    check_env(args)
+    for arg in args:
+        env.add_to_env('', arg)
+
+
 # actions
 
 def build_action(context):
     config = get_config(context)
     engine = get_engine(context)
-    builder = engine.create_builder(config)
+    builder = engine.create_builder(config,
+        environment=get_project_environment(context, config))
 
     if hasattr(context.args, 'list_steps') and context.args.list_steps:
         step_list_action(context)
@@ -446,6 +552,8 @@ def build_action(context):
         exit(1,
             _("Index {} is out of range. There are {} steps. Indexing begins ar 0.")
             .format(err.args[0], len(config.steps)))
+    except EnvError as err:
+        exit(1, str(err))
 
     print(result)
     return result.code
@@ -497,30 +605,65 @@ def config_print_action(context):
         yaml_dump(get_config(context)._data, stdout)
 
 
+def config_env_action(context):
+    if not (context.args.delete or context.args.set or context.args.add):
+        config_env_print(context)
+        return
+    config = select_config(context)
+    env = EnvDict((config.get('environment', []), ''))
+    env_delete(env, context)
+    env_set(env, context.args.set)
+    env_add(env, context.args.add)
+    env = env.get_env('')
+    # delete env if empty
+    if not env and 'environment' in config:
+        del config['environment']
+    else:
+        config['environment'] = env
+    config.validate()
+    config.save()
+
+
+def config_env_print(context):
+    if context.args.global_ and not context.args.project:
+        env = EnvDict(
+            (context.settings.get('environment', []), 'global settings'))
+    else:
+        env = get_project_environment(context)
+    try:
+        env = env.get_combined()
+    except EnvError as err:
+        exit(1, str(err))
+    if not env:
+        print("Environment is empty.")
+    else:
+        yaml_dump(env, stdout)
+
+
 def config_set_action(context):
-    if context.args.global_ and context.args.project:
-        exit(1, "Choose either global settings or project settings")
-    document = context.settings if context.args.global_ else get_config(context)
+    document = select_config(context)
 
     for val in context.args.values:
         try:
             key, val = val.split('=', 1)
             document.mlset_cast(key, val)
+        except IndexError as err:
+            if hasattr(err, 'index'):
+                exit(1, _("Index {} is out of range").format(err.index))
+            exit(1, str(err))
         except ValueError as err:
             if hasattr(err, 'value_type'):
                 exit(1, _("{} should be of type '{}', but was '{}'.").format(
                     key, err.value_type, type(val).__name__))
-            else:
-                exit(1, _("Give values in format 'key=val'."))
+            exit(1, _("Give values in format 'key=val'."))
 
     document.validate()
     report_save(document.save())
 
 
 def config_rm_action(context):
-    if context.args.global_ and context.args.project:
-        exit(1, "Choose either global settings or project settings")
-    document = context.settings if context.args.global_ else get_config(context)
+    document = select_config(context)
+
     if not document.container.exists():
         print("Cannot delete from config because config file doesn't exist.")
         exit(0)
@@ -540,6 +683,7 @@ def step_list_action(context):
     if not steps:
         print("The project config has no steps.")
         return
+    steps = [{'img': step} if isinstance(step, str) else step for step in steps]
     num_len = max(2, len(str(len(steps)-1)))
     name_len = max(4, max(len(s.get('name', '')) for s in steps))
     header_fmt = "{:>%ds}  {:%ds} {}" % (num_len, name_len)
@@ -552,11 +696,7 @@ def step_list_action(context):
 def step_add_action(context):
     args = context.args
     env = args.env
-    if env:
-        try:
-            env = OrderedDict(s.split('=', 1) for s in env)
-        except ValueError:
-            exit(1, "env is a dict, so values need to be in key=val format, e.g. a=1 b=2")
+    check_env(env)
     step = {
         'img': args.img,
         'cmd': args.cmd,
@@ -589,22 +729,58 @@ def step_rm_action(context):
             if i == 'n':
                 return False
 
-    ref = context.args.ref.lower()
     config = get_config(context)
-    try:
-        step = config.get_step(ref)
-    except IndexError:
-        exit(1, _(
-            "Index is out of range. Remember, indexing start from 0. "
-            "Use 'roman --list-steps' to see step indexes."))
-    except KeyError:
-        exit(1, _("There is no step called '{}'").format(ref))
+    step = get_step(config, context.args.ref)
     if not context.args.force and not confirm_del(step):
         return
     config.del_step(step)
     config.validate()
     config.save()
     print("Step successfully removed from config.")
+
+
+def step_env_action(context):
+    config = get_config(context)
+    step = get_step(config, context.args.ref)
+    if not (context.args.delete or context.args.set or context.args.add):
+        step_env_print(context, config, step)
+        return
+    if not isinstance(step, str):
+        env = EnvDict((step.get('env', []), ''))
+        is_str = False
+    else:
+        step = {'img': step}
+        is_str = True
+        env = EnvDict(([], ''))
+    env_delete(env, context)
+    env_set(env, context.args.set)
+    env_add(env, context.args.add)
+    #if env is empty, delete it
+    env = env.get_env('')
+    if not env and 'env' in step:
+        del step['env']
+    else:
+        step['env'] = env
+    if is_str and env:
+        config.steps[config.ref_to_index(context.args.ref)] = step
+    config.validate()
+    config.save()
+
+
+def step_env_print(context, config, step):
+    try:
+        env = get_project_environment(context, config)
+        if not isinstance(step, str):
+            env.add_env(
+                step.get('env', []), 'step {}'.format(
+                    step.get('name', context.args.ref)))
+        env = env.get_combined()
+        if not env:
+            print("Step environment is empty.")
+        else:
+            yaml_dump(env, stdout)
+    except EnvError as err:
+        exit(1, str(err))
 
 
 def validate_schema_action(context):
