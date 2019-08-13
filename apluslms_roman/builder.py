@@ -5,7 +5,7 @@ from shutil import rmtree
 from apluslms_yamlidator.utils.decorator import cached_property
 from apluslms_yamlidator.utils.collections import OrderedDict
 
-from .backends import BACKENDS, BuildTask, BuildStep, Environment
+from .backends import BACKENDS, BackendContext, BuildTask, BuildStep
 from .observer import StreamObserver
 from .utils.importing import import_string
 from .utils.translation import _
@@ -84,18 +84,25 @@ class Engine:
         self._backend_class = backend_class
 
         name = getattr(backend_class, 'name', None) or backend_class.__name__.lower()
-        env_prefix = name.upper() + '_'
-        env = {k: v for k, v in environ.items() if k.startswith(env_prefix)}
+        prefix = name.upper() + '_'
+        options = {}
+        # config
         if backend_name is not None:
-            env.update({env_prefix + k.replace('-', '_').upper(): v
+            options.update({prefix + k.replace('-', '_').upper(): v
                 for k, v in settings['backends'][backend_name].items()
                 if k != 'type'})
+        # environment
+        options.update({k: v for k, v in environ.items() if k.startswith(prefix)})
+        # command line
+        if settings:
+            options.update({prefix + k.replace('-', '_').upper(): v
+                for k, v in settings.get(name, {}).items()})
 
-        self._environment = Environment(getuid(), getegid(), env)
+        self._backend_context = BackendContext(getuid(), getegid(), options)
 
     @cached_property
     def backend(self):
-        return self._backend_class(self._environment)
+        return self._backend_class(self._backend_context)
 
     def verify(self):
         return self.backend.verify()

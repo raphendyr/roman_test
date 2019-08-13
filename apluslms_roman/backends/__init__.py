@@ -86,7 +86,7 @@ class BuildResult:
         return "Build failed on step {}: {}".format(self.step, error)
 
 
-Environment = namedtuple('Environment', [
+BackendContext = namedtuple('BackendContext', [
     'uid',
     'gid',
     'environ',
@@ -98,8 +98,8 @@ class Backend:
     WORK_PATH = '/work'
     LABEL_PREFIX = 'io.github.apluslm.roman'
 
-    def __init__(self, environment: Environment):
-        self.environment = environment
+    def __init__(self, context: BackendContext):
+        self.context = context
 
     def prepare(self, task: BuildTask, observer: BuildObserver):
         raise NotImplementedError
