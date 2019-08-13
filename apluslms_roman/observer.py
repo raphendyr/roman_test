@@ -12,15 +12,24 @@ class Phase(Enum):
 class StepState(Enum):
     UNKNOWN = 0
     NOTSTARTED = 1
+
     PREFLIGHT = 2
     PENDING = 3
     RUNNING = 4
     POSTFLIGHT = 5
-
     STOPPING = 6
+
     SUCCEEDED = 7
     FAILED = 8
     CANCELLED = 9
+
+    @property
+    def active(self):
+        return self.NOTSTARTED.value < self.value <= self.STOPPING.value
+
+    @property
+    def completed(self):
+        return self.value >= self.SUCCEEDED.value
 
 
 class Message(Enum):
