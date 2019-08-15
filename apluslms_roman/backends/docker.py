@@ -62,6 +62,10 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
             kwargs['timeout'] = timeout
         return docker.from_env(environment=env, **kwargs)
 
+    @cached_property
+    def _cache(self):
+        return DockerCache.load()
+
     def _run_opts(self, task, step):
         env = self.environment
 
@@ -99,20 +103,42 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
 
     def prepare(self, task, observer):
         client = self._client
+        images = self._cache.images
+        day = timedelta(days=1)
         for step in task.steps:
             observer.step_preflight(step)
             image, tag = step.img.split(':', 1)
+
+            last_update= images.get(step.img, None)
+            should_update = (not last_update or
+                datetime.now() - last_update >= day)
+
             try:
-                img = client.images.get(step.img)
+                client.images.get(step.img)
+                img_found = True
             except docker.errors.ImageNotFound:
+                img_found = False
+
+            if not img_found or should_update:
                 observer.step_running(step)
-                observer.manager_msg(step, "Downloading image {}".format(step.img))
+                if img_found:
+                    observer.manager_msg(step,
+                        ("Checking for updates for {} and "
+                        "downloading if any").format(step.img))
+                else:
+                    observer.manager_msg(step,
+                        "Downloading image {}".format(step.img))
                 try:
-                    img = client.images.pull(image, tag)
+                    client.images.pull(image, tag)
+                    images[step.img] = datetime.now()
                 except docker.errors.APIError as err:
-                    observer.step_failed(step)
-                    error = "%s %s" % (err.__class__.__name__, err)
-                    return BuildResult(-1, error, step)
+                    if not img_found:
+                        observer.step_failed(step)
+                        error = "%s %s" % (err.__class__.__name__, err)
+                        return BuildResult(-1, error, step)
+                    observer.manager_msg(step, "Couldn't download image. "
+                        "Using previously downloaded image")
+
             observer.step_succeeded(step)
         return BuildResult()
 
@@ -191,3 +217,6 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
                         out.append("  {}: {}".format(key, val))
 
         return '\n'.join(out)
+
+    def __del__(self):
+        self._cache.save()
