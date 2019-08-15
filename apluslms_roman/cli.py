@@ -355,7 +355,7 @@ def add_cli_actions(parser):
             help=_("a YAML/JSON file(s) to be validated"))
 
     backend = parser.add_parser('backend',
-        help=_("backend actions for debuging"))
+        help=_("backend actions"))
     with backend.use_subparsers(title=_("Backend actions")):
         backend.add_parser('test',
             callback=backend_test_action,
@@ -363,6 +363,12 @@ def add_cli_actions(parser):
         backend.add_parser('info',
             callback=partial(backend_test_action, verbose=True),
             help=_("show the backend information"))
+        clean = backend.add_parser('clean',
+            callback=backend_clean_action,
+            help=_("remove all Roman related data from the backend"))
+        clean.add_argument('-f', '--force', action='store_true',
+            help=_("also remove containers that are younger than a day "
+                "or don't have an expire label"))
 
     return parser
 
@@ -839,6 +845,12 @@ def backend_test_action(context, verbose=False):
         print('\n')
         print(engine.version_info())
     return 0
+
+
+def backend_clean_action(context):
+    engine = get_engine(context)
+    engine.backend.cleanup(context.args.force)
+
 
 if __name__ == '__main__':
     main()

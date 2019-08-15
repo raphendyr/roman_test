@@ -139,6 +139,16 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
         except Exception as e:
             return "{}: {}".format(e.__class__.__name__, e)
 
+    def cleanup(self, force=False):
+        containers = self._client.containers.list({'label': self.LABEL_PREFIX})
+        if not force:
+            now = str(datetime.now())
+            expire_label = self.LABEL_PREFIX + '.expire'
+            containers = [c for c in containers if
+                expire_label in c.labels and now > c.labels[expire_label]]
+        for container in containers:
+            container.remove(force=True)
+
     def version_info(self):
         version = self._client.version()
         if not version:

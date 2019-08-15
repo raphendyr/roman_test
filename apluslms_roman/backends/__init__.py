@@ -118,5 +118,11 @@ class Backend:
         """
         raise NotImplementedError
 
+    def cleanup(self, force=False):
+        """
+            Deletes containers
+        """
+        pass
+
     def version_info(self):
         pass
