@@ -6,6 +6,7 @@ from os.path import join
 import docker
 from apluslms_yamlidator.utils.decorator import cached_property
 
+from ..cache_file import CacheFile
 from ..utils.translation import _
 from . import (
     Backend,
@@ -17,6 +18,17 @@ Mount = docker.types.Mount
 
 
 logger = logging.getLogger(__name__)
+
+
+class DockerCache(CacheFile):
+    name = 'roman_docker_cache'
+    schema = name
+    version = (1, 0)
+    version_key = None
+
+    @property
+    def images(self):
+        return self.setdefault('images', {})
 
 
 @contextmanager
