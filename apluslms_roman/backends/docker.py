@@ -1,5 +1,6 @@
 import logging
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 from os.path import join
 
 import docker
@@ -52,11 +53,21 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
     def _run_opts(self, task, step):
         env = self.environment
 
+        now = datetime.now()
+        expire = now + timedelta(days=1)
+        labels = {
+            '': True,
+            '.created': now,
+            '.expire': expire,
+        }
+        labels = {self.LABEL_PREFIX + k: str(v) for k, v in labels.items()}
+
         opts = dict(
             image=step.img,
             command=step.cmd,
             environment=step.env,
             user='{}:{}'.format(env.uid, env.gid),
+            labels=labels
         )
 
         # mounts and workdir

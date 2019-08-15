@@ -96,6 +96,7 @@ Environment = namedtuple('Environment', [
 class Backend:
     WORK_SIZE = '100M'
     WORK_PATH = '/work'
+    LABEL_PREFIX = 'io.github.apluslm.roman'
 
     def __init__(self, environment: Environment):
         self.environment = environment
