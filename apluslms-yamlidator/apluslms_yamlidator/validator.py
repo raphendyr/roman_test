@@ -219,7 +219,8 @@ def _validator_with_default_feature(validator_class):
         validators={"properties" : set_defaults},
         # use collections.abc classes for array and object so Changes containers work too
         type_checker=validator_class.TYPE_CHECKER.redefine_many({
-            'array': (lambda checker, instance: isinstance(instance, Sequence)),
+            'array': (lambda checker, instance:
+                isinstance(instance, Sequence) and not isinstance(instance, str)),
             'object': (lambda checker, instance: isinstance(instance, Mapping)),
         }),
     )
