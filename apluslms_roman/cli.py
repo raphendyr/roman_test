@@ -598,7 +598,7 @@ def init_action(context):
 
 
 def config_print_action(context):
-    all_ = not any(getattr(context.args, k, False) for k in ('user', 'project'))
+    all_ = not any(getattr(context.args, k, False) for k in ('global_', 'project'))
     if context.args.debug:
         print("---\n# arguments:")
         data = {k: v for k, v in vars(context.args).items() if k[0] != '_' and not callable(v)}
