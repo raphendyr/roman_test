@@ -37,7 +37,8 @@ def warning(message):
     print(_("WARNING: %s") % (message,), file=stderr)
 
 
-_ActionContext = namedtuple('ActionContext', ('parser', 'args', 'settings', 'action'))
+_ActionContext = namedtuple('ActionContext',
+    ('parser', 'args', 'settings', 'action'))
 class ActionContext(_ActionContext):
     @property
     def action_name(self):
@@ -69,7 +70,8 @@ class CallbackSubParsersAction(argparse._SubParsersAction):
 
 
 class CallbackArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, callback_dest=None, callback_subparser_defaults=None, **kwargs):
+    def __init__(self, *args, callback_dest=None,
+            callback_subparser_defaults=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if callback_dest is None:
@@ -107,8 +109,8 @@ class CallbackArgumentParser(argparse.ArgumentParser):
             kwargs.setdefault(k, v)
         kwargs.setdefault('parser_class',
             partial(type(self),
-                    callback_dest=self._callback_dest,
-                    callback_subparser_defaults=self._callback_subparser_defaults))
+                callback_dest=self._callback_dest,
+                callback_subparser_defaults=self._callback_subparser_defaults))
         self._callback_subparsers = subparsers = self.add_subparsers(**kwargs)
         if self.get_default(self._callback_dest) is None:
             self.set_callback(self.help_callback)
@@ -125,7 +127,8 @@ class CallbackArgumentParser(argparse.ArgumentParser):
 
         # add any action defaults that aren't present
         for action in self._actions:
-            if action.dest is not argparse.SUPPRESS and action.default is not argparse.SUPPRESS:
+            if (action.dest is not argparse.SUPPRESS
+                    and action.default is not argparse.SUPPRESS):
                 defaults.setdefault(action.dest, action.default)
 
         # add any parser defaults that aren't present
@@ -208,7 +211,8 @@ def parse_actioncontext(parser, *, args=None):
         chdir(path_join(*dirs))
 
     # load settings
-    config = args.config if args.config is not None else GlobalSettings.get_config_path()
+    config = (args.config if args.config is not None
+        else GlobalSettings.get_config_path())
 
     logger.debug(_("Loading settings from '%s'"), config)
 
@@ -263,7 +267,8 @@ def add_cli_actions(parser):
     build.add_argument('--clean', action='store_true',
         help=_("delete old build files before building"))
     build.add_argument('-s', '--steps', nargs='+',
-        help=_("select which steps to build and in which order (use either index or step name)"))
+        help=_("select which steps to build and in which "
+            "order (use either index or step name)"))
 
     # build is the default callback. set defaults for it
     build.copy_defaults_to(parser)
@@ -327,7 +332,8 @@ def add_cli_actions(parser):
         remove = step.add_parser('remove', aliases=['rm'],
             callback=step_rm_action,
             help=_("remove a step from project config"))
-        remove.add_argument('ref', help=_("ref can be either step index or name"))
+        remove.add_argument('ref',
+            help=_("ref can be either step index or name"))
         remove.add_argument('-f', '--force', action='store_true',
             help=_("delete step without confirmation"))
 
@@ -405,12 +411,14 @@ def get_engine(context):
 def get_config(context):
     try:
         if context.args.project_config:
-            project_config = abspath(expanduser(expandvars(context.args.project_config)))
+            project_config = abspath(expanduser(
+                expandvars(context.args.project_config)))
             return ProjectConfig.load_from(project_config)
         try:
             return ProjectConfig.find_from(getcwd())
         except FileNotFoundError as err:
-            exit(1, str(err) + _("\nYou can create a configuration file with 'roman init'."))
+            exit(1, str(err) + _("\nYou can create a "
+                "configuration file with 'roman init'."))
     except ValidationError as e:
         exit(1, '\n'.join(render_error(e)))
     except ProjectConfigError as e:
@@ -439,18 +447,22 @@ def report_save(output):
 def verify_engine(engine, only_when_error=False):
     error = engine.verify()
     if error:
-        print(_("Container backend connection failed.\nUsing driver %s.%s.\n\n%s") % (
-            engine.backend.__module__,
-            engine.backend.__class__.__name__,
-            error,
+        print(_(
+            "Container backend connection failed."
+            "\nUsing driver {}.{}.\n\n{}").format(
+                engine.backend.__module__,
+                engine.backend.__class__.__name__,
+                error,
         ))
         if hasattr(engine.backend, 'debug_hint'):
             print("\n" + engine.backend.debug_hint)
         return False
-    elif not only_when_error:
-        print(_("Container backend connected successfully.\nUsing driver %s.%s.") % (
-            engine.backend.__module__,
-            engine.backend.__class__.__name__,
+    if not only_when_error:
+        print(_(
+            "Container backend connected successfully."
+            "\nUsing driver {}.{}.").format(
+                engine.backend.__module__,
+                engine.backend.__class__.__name__,
         ))
     return True
 
@@ -555,9 +567,8 @@ def build_action(context):
     except KeyError as err:
         exit(1, _("No step named {}.").format(err.args[0]))
     except IndexError as err:
-        exit(1,
-            _("Index {} is out of range. There are {} steps. Indexing begins ar 0.")
-            .format(err.args[0], len(config.steps)))
+        exit(1, _("Index {} is out of range. There are {} steps. Indexing "
+            "begins at 0.").format(err.args[0], len(config.steps)))
     except EnvError as err:
         exit(1, str(err))
 
@@ -572,7 +583,8 @@ def init_action(context):
             config = ProjectConfig.load_from(project_config)
         else:
             config = ProjectConfig.find_from(getcwd())
-        exit(1, _("A project configuration already exists at {}".format(config.path)))
+        exit(1, _("A project configuration already exists at {}")
+            .format(config.path))
     except FileNotFoundError:
         pass
 
@@ -588,20 +600,21 @@ def init_action(context):
         if not is_recognized:
             # ensure expanded and absolute path
             project_config = abspath(expanduser(expandvars(project_config)))
-            warning(_(
-                "roman won't recognize {} as a project config file without the -f flag"
-            ).format(project_config))
+            warning(_("roman won't recognize {} as a project config "
+                "file without the -f flag").format(project_config))
     else:
         project_config = ProjectConfig.DEFAULT_FILENAME
     ProjectConfig.load(project_config, allow_missing=True).save()
-    print(_("Project configuration file {} created successfully.".format(project_config)))
+    print(_("Project configuration file {} created successfully.")
+        .format(project_config))
 
 
 def config_print_action(context):
     all_ = not any(getattr(context.args, k, False) for k in ('global_', 'project'))
     if context.args.debug:
         print("---\n# arguments:")
-        data = {k: v for k, v in vars(context.args).items() if k[0] != '_' and not callable(v)}
+        data = {k: v for k, v in vars(context.args).items()
+            if k[0] != '_' and not callable(v)}
         yaml_dump(data, stdout)
     if all_ or context.args.global_:
         print("---\n# roman settings:")
@@ -804,7 +817,8 @@ def validate_schema_action(context):
             try:
                 doc = container.get_latest(max_version, validate=False)
             except KeyError:
-                print2(_("No elements with max version %s found!") % max_version)
+                print2(_("No elements with max version %s found!")
+                    % max_version)
                 return ()
             if doc.version is None:
                 doc.version = max_version
@@ -823,15 +837,18 @@ def validate_schema_action(context):
             try:
                 doc.validate(quiet=True)
             except ValidationError as e:
-                print2(_("Document %d failed against %s") % (doc.index, doc.validator_id))
+                print2(_("Document %d failed against %s")
+                    % (doc.index, doc.validator_id))
                 print('\n'+'\n'.join('    '+s for s in render_error(e))+'\n')
                 errors += 1
             else:
-                print2(_("Document %d validates against %s") % (doc.index, doc.validator_id))
+                print2(_("Document %d validates against %s")
+                    % (doc.index, doc.validator_id))
             documents += 1
         print()
     if errors > 0:
-        print(_("Found total of %d errors in %d documents.") % (errors, documents))
+        print(_("Found total of %d errors in %d documents.")
+            % (errors, documents))
         return 1
     print(_("All %d documents are valid.") % documents)
     return 0

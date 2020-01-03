@@ -40,7 +40,8 @@ class ProjectConfig(Document):
         config = join(path, file_) if file_ else None
         if not config or not isfile(config):
             raise FileNotFoundError((
-                _("Couldn't find project configuration from {}.\nExpected to find one of these: {}")
+                _("Couldn't find project configuration from {}."
+                "\nExpected to find one of these: {}")
             ).format(path, ', '.join(files)))
 
         return cls.load(config)
@@ -70,7 +71,8 @@ class ProjectConfig(Document):
     def add_step(self, step):
         if 'name' in step:
             if step['name'].lower() in self.steps_by_name:
-                raise ValueError("A step with the name '%s' already exists." % step['name'])
+                raise ValueError(_("A step with the name '%s' "
+                    "already exists.") % step['name'])
         self.steps.append(step)
 
     def del_step(self, step):

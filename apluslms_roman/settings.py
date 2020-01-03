@@ -47,6 +47,7 @@ class Settings(Document):
 
 
 class ArgumentSettingsMeta(type(Settings)):
+
     def __init__(cls, name, bases, namespace, **kwargs):
         super().__init__(name, bases, namespace, **kwargs)
 
@@ -78,7 +79,8 @@ class ArgumentSettings(Settings, metaclass=ArgumentSettingsMeta):
         # ArgumentSettings requires a valid schema to contain rest of the options
         validator = cls.Container.get_validator(cls.version)
         if not validator:
-            raise TypeError("{0}.Container.get_validator() failed. Is {0}.schema defined?".format(cls.__name__))
+            raise TypeError(("{0}.Container.get_validator() failed. Is {0}.schema defined?"
+                ).format(cls.__name__))
         for gname, (gtitle, gdesc) in cls._ARGUMENT_GROUPS.items():
             group = parser.add_argument_group(gtitle, description=gdesc) if gtitle else parser
             for option, name, meta in cls._ARGUMENTS.get(gname, ()):
@@ -103,7 +105,7 @@ class ArgumentSettings(Settings, metaclass=ArgumentSettingsMeta):
     def update_from_namespace(self, namespace, store=False):
         set_ = self.mlset if store else self.mlsetwork
         for arguments in self._ARGUMENTS.values():
-            for option, name, meta in arguments:
+            for option, name, _ in arguments:
                 value = getattr(namespace, name.replace('-', '_'), Undefined)
                 if value is not Undefined:
                     # FIXME: validate the value
