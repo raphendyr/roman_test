@@ -34,7 +34,7 @@ definitions:
         description: the version of the API to use
         type: string
       timeout:
-        title: docker API timeut
+        title: docker API timeout
         description: default timeout for API calls
         type: integer
         exclusiveMinimum: 0

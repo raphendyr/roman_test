@@ -95,7 +95,8 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
             opts['mounts'] = [
                 Mount(wpath, None, type='tmpfs', read_only=False, tmpfs_size=self.WORK_SIZE),
                 Mount(join(wpath, 'src'), task.path, type='bind', read_only=True),
-                Mount(join(wpath, 'build'), join(task.path, '_build'), type='bind', read_only=False),
+                Mount(join(wpath, 'build'), join(task.path, '_build'),
+                    type='bind', read_only=False),
             ]
             opts['working_dir'] = wpath
 
@@ -193,7 +194,17 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
             return
 
         out = []
-        okeys = ['Version', 'ApiVersion', 'MinAPIVersion', 'GoVersion', 'BuildTime', 'GitCommit', 'Experimental', 'Os', 'Arch', 'KernelVersion']
+        okeys = [
+            'Version',
+            'ApiVersion',
+            'MinAPIVersion',
+            'GoVersion',
+            'BuildTime',
+            'GitCommit',
+            'Experimental',
+            'Os',
+            'Arch',
+            'KernelVersion']
         version['Name'] = 'Client'
         components = version.pop('Components', [])
         components.insert(0, version)
@@ -209,10 +220,10 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
                     val = component[key]
                     if isinstance(val, dict):
                         out.append("  {}:".format(key))
-                        for k, v in val.items(): out.append("    {}: {}".format(k, v))
+                        out.extend(("    {}: {}".format(k, v) for k, v in val.items))
                     elif isinstance(val, list):
                         out.append("  {}:".format(key))
-                        for v in val: out.append("   - {}".format(v))
+                        out.extend(("   - {}".format(v) for v in val))
                     else:
                         out.append("  {}: {}".format(key, val))
 

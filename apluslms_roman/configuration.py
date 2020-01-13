@@ -30,21 +30,18 @@ class ProjectConfig(Document):
             for name in cls.DEFAULT_NAMES
         ]
         files = list(chain.from_iterable(files))
-        files_s = frozenset(files)
 
         if not isdir(path):
             raise ProjectConfigError(
                 _("Path {} doesn't exist or is not a directory").format(path)
             )
 
-        for filename in listdir(path):
-            if filename in files_s:
-                config = join(path, filename)
-                if isfile(config):
-                    break
-        else:
+        file_ = next((file_ for file_ in files if isfile(file_)), None)
+        config = join(path, file_) if file_ else None
+        if not config or not isfile(config):
             raise FileNotFoundError((
-                _("Couldn't find project configuration from {}.\nExpected to find one of these: {}")
+                _("Couldn't find project configuration from {}."
+                "\nExpected to find one of these: {}")
             ).format(path, ', '.join(files)))
 
         return cls.load(config)
@@ -74,7 +71,8 @@ class ProjectConfig(Document):
     def add_step(self, step):
         if 'name' in step:
             if step['name'].lower() in self.steps_by_name:
-                raise ValueError("A step with the name '%s' already exists." % step['name'])
+                raise ValueError(_("A step with the name '%s' "
+                    "already exists.") % step['name'])
         self.steps.append(step)
 
     def del_step(self, step):
