@@ -214,9 +214,20 @@ def _validator_with_default_feature(validator_class):
                 instance.setdefault(property, subschema["default"])
         yield from validate_properties(validator, properties, instance, schema)
 
+    def python_type(validator, types, instance, schema):
+        if not isinstance(types, list):
+            types = [types]
+
+        if not any(instance.__class__.__name__ == type_ for type_ in types):
+            types = ["'%s'" % type_ for type_ in types]
+            yield ValidationError("{} is not an instance of Python class {}"
+                .format(instance, ', '.join(types)))
+
     new = validators.extend(validator_class,
         # redefine 'properties' validator
-        validators={"properties" : set_defaults},
+        validators={
+            "properties" : set_defaults,
+            "pythonType": python_type},
         # use collections.abc classes for array and object so Changes containers work too
         type_checker=validator_class.TYPE_CHECKER.redefine_many({
             'array': (lambda checker, instance:
