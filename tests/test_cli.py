@@ -360,30 +360,19 @@ class TestConfigSetAction(CliTestCase):
     SETTINGS = "version: '1'"
 
     def test_normal(self):
-        r = self.command_test("config -g set docker.timeout=100", settings=self.SETTINGS)
+        r = self.command_test("config -g set backend=docker1", settings=self.SETTINGS)
         self.assertEqual(r.out.strip(), "File successfully edited.")
         data = r.files[SETTINGS_FN].get_written_yaml()
-        self.assertIn('docker', data)
-        self.assertIn('timeout', data['docker'])
-        self.assertEqual(data['docker']['timeout'], 100)
+        self.assertIn('backend', data)
+        self.assertEqual(data['backend'], 'docker1')
 
     def test_withNewFile_shouldCreateFile(self):
-        r = self.command_test("config -g set docker.timeout=100")
+        r = self.command_test("config -g set backend=docker1")
         self.assertEqual(r.out.strip(), "File created.")
         self.assertIn(SETTINGS_FN, r.files)
         data = r.files[SETTINGS_FN].get_written_yaml()
-        self.assertIn('docker', data)
-        self.assertIn('timeout', data['docker'])
-        self.assertEqual(data['docker']['timeout'], 100)
-
-    def test_withWrongType_shouldError(self):
-        r = self.command_test("config -g set docker.tls_verify=2", exit_code=1)
-        self.assertEqual(
-            "docker.tls_verify should be of type 'boolean', but was 'str'.",
-            r.err.strip())
-        r = self.command_test("config -g set docker.timeout=a", exit_code=1)
-        self.assertEqual(
-            "docker.timeout should be of type 'integer', but was 'str'.", r.err.strip())
+        self.assertIn('backend', data)
+        self.assertEqual(data['backend'], 'docker1')
 
     def test_withLocalAndGlobalSeletcted_shouldError(self):
         r = self.command_test("config -g -p set a=b", exit_code=1)
@@ -398,16 +387,15 @@ class TestConfigSetAction(CliTestCase):
 class TestConfigRemoveAction(CliTestCase):
     SETTINGS = {
         'version': '1.0',
-        'docker': {'tls_verify': True}
+        'backend': 'docker1'
     }
 
     def test_normal(self):
-        r = self.command_test("config -g remove docker.tls_verify",
-            settings=self.SETTINGS)
+        r = self.command_test("config -g remove backend", settings=self.SETTINGS)
         self.assertEqual("File successfully edited.", r.out.strip())
 
     def test_withEmptyFile_shouldInformAboutEmptyFileAndNotError(self):
-        r = self.command_test("config -g remove docker.test")
+        r = self.command_test("config -g remove backend")
         self.assertEqual(
             "Cannot delete from config because config file doesn't exist.", r.out.strip())
 

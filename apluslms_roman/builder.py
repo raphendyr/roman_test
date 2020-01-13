@@ -5,7 +5,7 @@ from shutil import rmtree
 from apluslms_yamlidator.utils.decorator import cached_property
 from apluslms_yamlidator.utils.collections import OrderedDict
 
-from .backends import BACKENDS, BuildTask, BuildStep, Environment
+from .backends import BACKENDS, BackendContext, BuildTask, BuildStep
 from .observer import StreamObserver
 from .utils.importing import import_string
 from .utils.translation import _
@@ -55,31 +55,54 @@ class Builder:
         return result
 
 
+class BackendError(Exception):
+
+    def __init__(self, backend):
+        super().__init__()
+        self.backend = backend
+
+
 class Engine:
     def __init__(self, backend_class=None, settings=None):
+        backend_name = None
         if backend_class is None:
             if settings and 'backend' in settings:
                 backend_class = settings['backend']
+                if 'backends' in settings and backend_class in settings['backends']:
+                    backend_name = backend_class
+                    if 'type' in settings['backends'][backend_name]:
+                        backend_class = settings['backends'][backend_name]['type']
             else:
                 from .backends.docker import DockerBackend as backend_class
         if isinstance(backend_class, str):
             if '.' not in backend_class:
                 backend_class = BACKENDS.get(backend_class, backend_class)
-            backend_class = import_string(backend_class)
+            try:
+                backend_class = import_string(backend_class)
+            except ImportError:
+                raise BackendError(backend_class)
         self._backend_class = backend_class
 
         name = getattr(backend_class, 'name', None) or backend_class.__name__.lower()
-        env_prefix = name.upper() + '_'
-        env = {k: v for k, v in environ.items() if k.startswith(env_prefix)}
+        prefix = name.upper() + '_'
+        options = {}
+        # config
+        if backend_name is not None:
+            options.update({prefix + k.replace('-', '_').upper(): v
+                for k, v in settings['backends'][backend_name].items()
+                if k != 'type'})
+        # environment
+        options.update({k: v for k, v in environ.items() if k.startswith(prefix)})
+        # command line
         if settings:
-            for k, v in settings.get(name, {}).items():
-                if v is not None and v != '':
-                    env[env_prefix + k.replace('-', '_').upper()] = v
-        self._environment = Environment(getuid(), getegid(), env)
+            options.update({prefix + k.replace('-', '_').upper(): v
+                for k, v in settings.get(name, {}).items()})
+
+        self._backend_context = BackendContext(getuid(), getegid(), options)
 
     @cached_property
     def backend(self):
-        return self._backend_class(self._environment)
+        return self._backend_class(self._backend_context)
 
     def verify(self):
         return self.backend.verify()

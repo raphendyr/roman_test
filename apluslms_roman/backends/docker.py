@@ -40,7 +40,7 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
 
     @cached_property
     def _client(self):
-        env = self.environment.environ
+        env = self.context.environ
         kwargs = {}
         version = env.get('DOCKER_VERSION', None)
         if version:
@@ -51,7 +51,7 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
         return docker.from_env(environment=env, **kwargs)
 
     def _run_opts(self, task, step):
-        env = self.environment
+        env = self.context
 
         now = datetime.now()
         expire = now + timedelta(days=1)
