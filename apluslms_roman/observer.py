@@ -208,19 +208,18 @@ class StreamObserver(BuildObserver):
             elif state in (StepState.PENDING, StepState.PREFLIGHT):
                 self._write('step ', Fore.CYAN + Style.BRIGHT)
                 self._write('%s\n' % (step,), Style.BRIGHT)
+            elif state == StepState.CANCELLED:
+                msg = ("\r  \nBuild cancelled{}\n"
+                    .format(" on step %s" % (step,) if step else ""))
+                self._write(msg, Fore.RED + Style.BRIGHT)
+            elif state == StepState.FAILED:
+                self._write('  failed: ', Fore.RED + Style.BRIGHT)
+                self._write('{}\n\n'.format(format_time(time() - self._start_time)))
             elif phase == Phase.BUILD and state == StepState.RUNNING:
                 self._write("  Running container\n", Fore.BLUE + Style.BRIGHT)
             self._start_time = time()
         elif type_ == Message.RESULT_MSG:
-            if state == StepState.CANCELLED:
-                msg = ("\r  \nBuild cancelled{}\n"
-                    .format(" on step %s" % (step,) if step else ""))
-                self._write(msg, Fore.RED + Style.BRIGHT)
-                return
-            if state == StepState.FAILED:
-                self._write('  failed: ', Fore.RED + Style.BRIGHT)
-                self._write('{}\n\n'.format(format_time(time() - self._start_time)))
-            elif phase == Phase.PREPARE:
+            if phase == Phase.PREPARE or state == StepState.CANCELLED:
                 return
             if data[0] == 0:
                 self._write("Build OK\n", Fore.GREEN + Style.BRIGHT)
