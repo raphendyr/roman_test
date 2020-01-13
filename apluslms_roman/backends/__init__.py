@@ -112,7 +112,7 @@ BackendContext = namedtuple('BackendContext', [
 class Backend:
     WORK_SIZE = '100M'
     WORK_PATH = '/work'
-    LABEL_PREFIX = 'io.github.apluslm.roman'
+    LABEL_PREFIX = 'io.github.apluslms.roman'
 
     def __init__(self, context: BackendContext):
         self.context = context
