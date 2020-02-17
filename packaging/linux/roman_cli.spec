@@ -1,8 +1,8 @@
 # -*- mode: python -*-
 
-from roman_analysis import get_gui_meta
+from roman_analysis import get_lib_meta
 
-meta = get_gui_meta(workpath)
+meta = get_lib_meta(workpath)
 block_cipher = None
 
 a = Analysis(
@@ -27,21 +27,16 @@ pyz = PYZ(
 exe = EXE(
     pyz,
     a.scripts,
-    [],
-    exclude_binaries=True,
-    name='Roman',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=False,
-)
-coll = COLLECT(
-    exe,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
-    upx=True,
-    name='roman_appdata',
+    [],
+    name='roman-%s-%s' % (meta.version, meta.arch),
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=True, # NOTE: disable, if problems are found
+    upx=True, # TODO: macos ignores upx
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
 )

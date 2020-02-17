@@ -8,19 +8,22 @@ if [ "${BUILD_SDIST:-}" = 'true' ]; then
 	run_for_all setup_dist sdist
 fi
 
+if [ "${BUILD_CLI:-}" = 'true' ]; then
+	if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
+		# create roman-$ver-$arch, NOTE: uses linux spec (no differences)
+		pyinst packaging/linux/roman_cli.spec
+
+	elif [ "$TRAVIS_OS_NAME" = 'linux' ]; then
+		# create roman-$ver-$arch
+		pyinst packaging/linux/roman_cli.spec
+	fi
+fi
+
 if [ "${BUILD_GUI:-}" = 'true' ]; then
 	appid=$(grep -E '^__app_id__\s*=' "simple_gui/roman_tki.py"|head -n1|cut -d"'" -f2)
 	libver=$(grep '^Version: ' "apluslms_roman.egg-info/PKG-INFO" | head -n1 | cut -d ' ' -f 2)
 	guiver=$(grep '^Version: ' "simple_gui/apluslms_roman_tki.egg-info/PKG-INFO" | head -n1 | cut -d ' ' -f 2)
 	version="$guiver-$libver"
-
-	for package in $PACKAGES simple_gui; do
-		path="$BUILD_PATH/$(run_for "$package" setup_py --name)/lib"
-		if [ -e "$path" ]; then
-			PYTHONPATH="$PYTHONPATH:$path"
-		fi
-	done
-	export PYTHONPATH
 
 	if [ "$TRAVIS_OS_NAME" = 'osx' ]; then
 		# create icns

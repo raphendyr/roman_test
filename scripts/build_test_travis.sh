@@ -4,6 +4,7 @@ cd ..
 
 . ./scripts/_include.sh
 
+export BUILD_CLI=true
 export BUILD_GUI=true
 export BUILD_SDIST=true
 export BUILD_WHEEL=true

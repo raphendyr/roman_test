@@ -1,12 +1,10 @@
 # -*- mode: python -*-
 
 import os
+from roman_analysis import get_gui_meta
 
-from roman_analysis import get_meta
-
-meta = get_meta(workpath)
+meta = get_gui_meta(workpath)
 icon = os.path.join(os.path.dirname(workpath), 'roman.icns')
-
 block_cipher = None
 
 a = Analysis(

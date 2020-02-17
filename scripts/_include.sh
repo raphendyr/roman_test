@@ -139,5 +139,10 @@ setup_dist() {
 }
 
 pyinst() {
-	pyinstaller --noconfirm --noconsole --workpath "$BUILD_PATH" --distpath "$DIST_PATH" "$@"
+	# Optimization needs to be set for Python interpreter (not pyinstaller).
+	# Using -m PyInstaller would add CWD to sys.path, which would ignore
+	# installed packages. As a workaround, we use pyinstaller script, which will
+	# tell Python to add it's basedir to sys.path (e.g. venv/bin/). Result is
+	# identical to calling pyinstaller directly.
+	$PYTHON -OO $(which pyinstaller) --noconfirm --noconsole --workpath "$BUILD_PATH" --distpath "$DIST_PATH" "$@"
 }

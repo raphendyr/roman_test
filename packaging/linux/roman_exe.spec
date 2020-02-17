@@ -1,10 +1,10 @@
 # -*- mode: python -*-
 
 import os
-from roman_analysis import get_meta
-meta = get_meta(workpath)
-meta.datas.append((os.path.join(os.getcwd(), 'simple_gui', 'roman.png'), '.'))
+from roman_analysis import get_gui_meta
 
+meta = get_gui_meta(workpath)
+meta.datas.append((os.path.join(os.getcwd(), 'simple_gui', 'roman.png'), '.'))
 block_cipher = None
 
 a = Analysis(

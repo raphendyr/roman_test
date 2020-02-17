@@ -43,5 +43,7 @@ for package in $PACKAGES; do
 	install "$package"
 done
 
-#FIXME: simple_gui is skipped for now
-#build_and_test "simple_gui"
+if [ "${BUILD_GUI:-}" = 'true' ]; then
+	build_and_test "simple_gui"
+	install "simple_gui"
+fi
