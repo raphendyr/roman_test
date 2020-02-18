@@ -120,8 +120,8 @@ To run tests:
 
 .. badges: http://shields.io/
 
-.. |build status| image:: https://img.shields.io/travis/apluslms/roman.svg
-   :target: https://travis-ci.org/apluslms/roman
+.. |build status| image:: https://travis-ci.com/apluslms/roman.svg?branch=master
+   :target: https://travis-ci.com/apluslms/roman
 
 .. |download release| image:: https://img.shields.io/github/release/apluslms/roman.svg
    :target: https://github.com/apluslms/roman/releases
