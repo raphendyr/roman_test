@@ -32,6 +32,7 @@ install() {
 	extras=$(cd "$1" && ls requirements-*.txt 2>/dev/null|sed -e 's/^requirements-//' -e 's/\.txt$//'|tr '\n' ','|sed 's/,$//')
 	[ "$extras" ] && extras="[$extras]"
 	print_step "Installing $wname-$wversion $extras"
+	pip uninstall -y "$wname" >/dev/null || true
 	for wheel in "$DIST_PATH/$wname-$wversion"*; do
 		pip install "$wheel$extras"
 		[ "${BUILD_WHEEL:-}" = 'true' ] || rm "$wheel"
