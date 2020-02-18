@@ -224,7 +224,7 @@ You might be able to add yourself to that group with 'sudo adduser docker'.""")
                     val = component[key]
                     if isinstance(val, dict):
                         out.append("  {}:".format(key))
-                        out.extend(("    {}: {}".format(k, v) for k, v in val.items))
+                        out.extend(("    {}: {}".format(k, v) for k, v in val.items()))
                     elif isinstance(val, list):
                         out.append("  {}:".format(key))
                         out.extend(("   - {}".format(v) for v in val))
