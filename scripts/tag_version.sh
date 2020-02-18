@@ -8,4 +8,5 @@ if [ "x${version#*-}" = "x$version" ]; then
 else
 	git tag -a v$version -m "Pre-release $version"
 fi
-echo "Remember to push tags: git push --tags"
+git tag -n1 v$version
+echo "Remember to push the tag: git push origin v$version"
