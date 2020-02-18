@@ -5,8 +5,8 @@ from functools import partial
 from glob import glob
 from itertools import chain
 from os import chdir, getcwd
-from os.path import abspath, expanduser, expandvars, join as path_join
-from sys import exit as _exit, stderr, stdout
+from os.path import abspath, basename, expanduser, expandvars, join as path_join
+from sys import executable, exit as _exit, stderr, stdout
 
 from apluslms_yamlidator.document import Document
 from apluslms_yamlidator.utils.yaml import rt_dump as yaml_dump
@@ -157,6 +157,11 @@ def create_parser(version=__version__,
     kwargs.setdefault('description', _("A project material builder"))
     #parser = argparse.ArgumentParser(**kwargs)
     parser = CallbackArgumentParser(**kwargs)
+
+    if parser.prog == '__main__.py':
+        parser.prog = "{} -m {}".format(
+            basename(executable),
+            __name__.partition('.')[0])
 
     # basic options
     parser.add_argument('-V', '--version',
@@ -419,8 +424,9 @@ def get_config(context):
         try:
             return ProjectConfig.find_from(getcwd())
         except FileNotFoundError as err:
-            exit(1, str(err) + _("\nYou can create a "
-                "configuration file with 'roman init'."))
+            msg = _("You can create a configuration file with '{} init'."
+                ).format(context.parser.prog)
+            exit(1, "{}\n{}".format(err, msg))
     except ValidationError as e:
         exit(1, '\n'.join(render_error(e)))
     except ProjectConfigError as e:
