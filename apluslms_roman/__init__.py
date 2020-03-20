@@ -1,5 +1,5 @@
 
-__version__ = '0.3.0-rc.1'
+__version__ = '0.3.0'
 __author__ = 'io.github.apluslms'
 __app_id__ = 'io.github.apluslms.Roman'
 
